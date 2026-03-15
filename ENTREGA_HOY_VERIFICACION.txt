@@ -1,0 +1,344 @@
+================================================================================
+  VERIFICACIÓN DE TAREAS - ENTREGA HOY 11/03/2026
+  Proyecto WOOF
+================================================================================
+
+INSTRUCCIONES GENERALES
+-----------------------
+Este documento explica DÓNDE está implementado cada requisito y CÓMO demostrarlo
+en vivo o en revisión de código. Sigue el orden de cada sección.
+
+
+================================================================================
+TAREA 1: Integración de la red neuronal EfficientNetB4 en el backend
+         con reconocimiento si es perro o no
+================================================================================
+
+ESTADO: ✅ COMPLETAMENTE IMPLEMENTADO
+
+--- DÓNDE ESTÁ EL CÓDIGO ---
+
+1. Modelo entrenado (archivo físico):
+   WOOF_TRAINING/output/woof_model_v1.h5        ← modelo H5 usado por el backend
+   WOOF_TRAINING/output/woof_model_v1.tflite    ← versión TFLite (opcional)
+   WOOF_TRAINING/output/woof_model_v1_metadata.json ← metadatos del modelo
+   WOOF_TRAINING/woof_training_v1.ipynb         ← notebook de entrenamiento
+
+2. Carga del modelo en el backend:
+   WOOF_BACKEND/app/services/model_service.py
+
+   - Función load_model(): carga woof_model_v1.h5 al iniciar el servidor
+   - Arquitectura: EfficientNetB4 (ImageNet pretrained) + cabeza de clasificación
+   - Modelo de embeddings: toma la capa penúltima → vectores de 512 dimensiones
+   - Preprocesamiento de imagen: resize a (380, 380), usa EfficientNet's preprocess_input
+
+3. Función de reconocimiento si ES perro o NO:
+   WOOF_BACKEND/app/services/model_service.py
+   → Función: is_dog(image_bytes)
+     - Recibe bytes de imagen
+     - Preprocesa a (380, 380)
+     - Corre el modelo de clasificación
+     - Umbral de confianza: 40%
+     - Retorna: True/False + porcentaje de confianza
+
+4. Endpoint que expone esta función:
+   WOOF_BACKEND/app/routes/dogs.py
+   → POST /api/v1/validate-photo
+     - Recibe: foto (multipart) + Bearer token Firebase
+     - Llama internamente a is_dog()
+     - Retorna JSON: { "is_dog": true/false, "confidence": 0.87, "message": "..." }
+
+5. Inicialización del modelo al arrancar el servidor:
+   WOOF_BACKEND/main.py
+   → Función lifespan(): llama a load_model() antes de aceptar requests
+
+--- CÓMO DEMOSTRARLO ---
+
+OPCIÓN A — Demo en vivo (recomendada si tienes el servidor corriendo):
+
+  Paso 1: Arrancar el backend
+    cd E:\PROYECTO\WOOF_BACKEND
+    .\venv\Scripts\Activate.ps1
+    uvicorn main:app --reload --port 8000
+
+  Paso 2: Probar con curl o Postman
+    Endpoint: POST http://localhost:8000/api/v1/validate-photo
+    Headers: Authorization: Bearer <firebase_id_token>
+    Body: form-data → key "photo", value = imagen de un perro
+
+    Respuesta esperada con foto de perro:
+      { "is_dog": true, "confidence": 0.92, "message": "Perro detectado" }
+
+    Respuesta esperada con foto de otra cosa (persona, paisaje):
+      { "is_dog": false, "confidence": 0.12, "message": "No se detectó un perro" }
+
+  Paso 3: También visible desde Swagger UI
+    Abrir en navegador: http://localhost:8000/docs
+    Buscar el endpoint /api/v1/validate-photo y ejecutarlo desde ahí
+
+OPCIÓN B — Revisión de código (sin servidor):
+
+  Mostrar en pantalla:
+  1. WOOF_TRAINING/output/woof_model_v1.h5    → prueba de que el modelo existe
+  2. WOOF_BACKEND/app/services/model_service.py → función is_dog() con su lógica
+  3. WOOF_BACKEND/app/routes/dogs.py           → endpoint /validate-photo
+  4. WOOF_TRAINING/woof_training_v1.ipynb      → proceso de entrenamiento EfficientNetB4
+
+PUNTOS A DESTACAR AL PRESENTAR:
+  - Arquitectura EfficientNetB4 (state-of-the-art para clasificación de imágenes)
+  - Fine-tuning en 3 fases (head → 70% base → full fine-tuning)
+  - Precisión del modelo: 93.4% en test set
+  - Umbral de confianza configurable (actualmente 40%)
+  - La detección es-perro es el primer filtro antes de cualquier operación
+
+
+================================================================================
+TAREA 2: Configuración del proyecto FastAPI + Firebase Admin SDK + Cloudinary
+         + Diseño INICIAL de la BD Firestore
+================================================================================
+
+ESTADO: ✅ COMPLETAMENTE IMPLEMENTADO
+
+--- DÓNDE ESTÁ EL CÓDIGO ---
+
+1. Proyecto FastAPI configurado:
+   WOOF_BACKEND/main.py                         ← app FastAPI con lifespan, CORS, routers
+   WOOF_BACKEND/app/config.py                   ← Settings con pydantic-settings, lee .env
+   WOOF_BACKEND/requirements.txt                ← todas las dependencias
+   WOOF_BACKEND/.env                            ← variables de entorno (credenciales)
+
+   Dependencias clave en requirements.txt:
+     fastapi, uvicorn[standard], python-multipart, pydantic-settings, python-dotenv
+
+2. Firebase Admin SDK integrado:
+   WOOF_BACKEND/app/services/firebase_service.py
+   → Función: inicializa firebase_admin con credentials del .env
+   → Función: upload_photo() → sube foto y retorna URL
+
+   WOOF_BACKEND/app/dependencies.py
+   → Función: verify_firebase_token()
+     - Lee el header Authorization: Bearer <token>
+     - Verifica token con firebase_admin.auth.verify_id_token()
+     - Retorna decoded token o lanza HTTP 401
+
+3. Cloudinary integrado:
+   WOOF_BACKEND/app/services/firebase_service.py
+   → Usa cloudinary SDK
+   → Función upload_photo(image_bytes, folder) → retorna secure_url de Cloudinary
+   → Configurado con cloud_name, api_key, api_secret del .env
+
+4. Diseño INICIAL de la BD Firestore — 3 colecciones:
+
+   COLECCIÓN: users/{uid}
+   → Campos: uid, name, email, role("USER"/"ADMIN"), isBlocked, phone, fcmToken
+   → Se crea cuando un usuario se registra (desde la app Android)
+   → Código app: PROYECTO_APP/.../data/repository/AuthRepositoryImpl.kt
+
+   COLECCIÓN: lost_dogs/{id}
+   → Campos: name, description, owner_name, owner_phone, owner_email,
+             photo_url, embedding (vector 512 floats), registered_by_uid,
+             created_at, status("active")
+   → Se crea al reportar perro perdido
+   → Código backend: WOOF_BACKEND/app/services/firebase_service.py → save_lost_dog()
+
+   COLECCIÓN: found_dog_reports/{id}
+   → Campos: found_by_uid, created_at,
+             matches: [ { dog_id, similarity_percent }, ... ]
+   → Se crea al reportar perro encontrado con sus resultados de matching
+   → Código backend: WOOF_BACKEND/app/services/firebase_service.py → save_found_report()
+
+--- CÓMO DEMOSTRARLO ---
+
+OPCIÓN A — Demo en vivo:
+
+  FastAPI:
+    Paso 1: cd E:\PROYECTO\WOOF_BACKEND && uvicorn main:app --reload
+    Paso 2: Abrir http://localhost:8000/docs → Swagger UI muestra todos los endpoints
+    Paso 3: Probar GET http://localhost:8000/health → retorna { "status": "ok", "model_loaded": true }
+
+  Firebase Admin SDK + Cloudinary:
+    Paso 1: Ejecutar POST /api/v1/register-lost-dog con datos de prueba
+    Paso 2: Ir a Firebase Console → Firestore → colección lost_dogs → ver el documento creado
+    Paso 3: Ir a Cloudinary Dashboard → ver la foto subida
+
+  Firestore colecciones:
+    Abrir Firebase Console (console.firebase.google.com)
+    → Firestore Database → mostrar las 3 colecciones: users, lost_dogs, found_dog_reports
+
+OPCIÓN B — Revisión de código:
+
+  Mostrar en pantalla (en este orden):
+  1. WOOF_BACKEND/requirements.txt            → lista de dependencias FastAPI + Firebase + Cloudinary
+  2. WOOF_BACKEND/.env                        → variables de configuración (oscurecer valores sensibles)
+  3. WOOF_BACKEND/app/config.py               → Settings class
+  4. WOOF_BACKEND/main.py                     → inicialización de la app FastAPI
+  5. WOOF_BACKEND/app/dependencies.py         → verify_firebase_token (integración Firebase SDK)
+  6. WOOF_BACKEND/app/services/firebase_service.py → inicialización Firebase + Cloudinary + save_lost_dog()
+  7. Firebase Console → mostrar las 3 colecciones con documentos de ejemplo
+
+PUNTOS A DESTACAR AL PRESENTAR:
+  - Firebase Admin SDK para autenticación server-side (no solo client-side)
+  - Cloudinary para almacenamiento de imágenes (mejor que Firebase Storage para ML)
+  - El embedding vectorial (512 floats) se almacena directo en Firestore junto al perro
+  - La colección found_dog_reports guarda el historial de búsquedas con sus matches
+  - Separación clara de responsabilidades: config.py / dependencies.py / services/
+
+
+================================================================================
+TAREA 3: Configuración base de la aplicación móvil
+         Hilt + Clean Architecture + SplashScreen + NavHost
+================================================================================
+
+ESTADO: ✅ COMPLETAMENTE IMPLEMENTADO
+
+--- DÓNDE ESTÁ EL CÓDIGO ---
+
+1. Hilt configurado:
+
+   PROYECTO_APP/app/build.gradle.kts
+   → Plugin: id("com.google.dagger.hilt.android")
+   → Dependencias: hilt-android, hilt-compiler, hilt-navigation-compose
+
+   PROYECTO_APP/app/src/main/java/com/univalle/proyectov1/ProyectoApp.kt
+   → @HiltAndroidApp class ProyectoApp : Application()
+   → Activa Hilt para toda la aplicación
+
+   PROYECTO_APP/app/src/main/java/com/univalle/proyectov1/di/AppModule.kt
+   → @Module @InstallIn(SingletonComponent::class)
+   → Provee: FirebaseAuth, FirebaseFirestore, Retrofit (con OkHttpClient)
+   → Provee: AuthRepository, DogsRepository, UserRepository (bindings de interfaces)
+
+   PROYECTO_APP/app/src/main/java/com/univalle/proyectov1/MainActivity.kt
+   → @AndroidEntryPoint anotado → permite @HiltViewModel en esta Activity
+
+2. Estructura de carpetas Clean Architecture:
+
+   PROYECTO_APP/app/src/main/java/com/univalle/proyectov1/
+   │
+   ├── feature/                          ← CAPA DE DOMINIO + DATOS
+   │   ├── auth/
+   │   │   ├── domain/
+   │   │   │   ├── model/User.kt         ← entidad de dominio
+   │   │   │   └── repository/AuthRepository.kt  ← interfaz (contrato)
+   │   │   └── data/
+   │   │       └── repository/AuthRepositoryImpl.kt ← implementación Firebase
+   │   ├── dogs/
+   │   │   ├── domain/
+   │   │   │   ├── model/Dog.kt
+   │   │   │   ├── model/DogMatch.kt
+   │   │   │   └── repository/DogsRepository.kt
+   │   │   └── data/
+   │   │       ├── repository/DogsRepositoryImpl.kt
+   │   │       └── remote/WoofApiService.kt  ← Retrofit interface
+   │   └── user/
+   │       ├── domain/repository/UserRepository.kt
+   │       └── data/repository/UserRepositoryImpl.kt
+   │
+   ├── di/                               ← INYECCIÓN DE DEPENDENCIAS
+   │   └── AppModule.kt
+   │
+   ├── core/                             ← UTILIDADES COMPARTIDAS
+   │   └── result/UiState.kt             ← sealed class: Idle/Loading/Success/Error
+   │
+   └── ui/                               ← CAPA DE PRESENTACIÓN
+       ├── auth/         (LoginScreen, RegisterScreen, AuthViewModel, AuthComponents)
+       ├── dogs/         (ReportLostDogScreen, ReportFoundDogScreen, DogsViewModel, etc.)
+       ├── home/         (HomeScreen)
+       ├── profile/      (ProfileScreen, ProfileViewModel)
+       ├── session/      (SessionViewModel — detecta bloqueo en tiempo real)
+       ├── splash/       (SplashScreen)
+       ├── navigation/   (Routes.kt)
+       └── theme/        (Color.kt, Theme.kt, Type.kt)
+
+3. SplashScreen:
+
+   PROYECTO_APP/.../ui/splash/SplashScreen.kt
+   → Animación del logo WOOF al iniciar
+   → Verifica conexión a internet
+   → Verifica estado de Firebase Auth (currentUser)
+   → Si hay sesión activa → navega a HOME
+   → Si no hay sesión → navega a LOGIN
+   → Transición automática con LaunchedEffect + delay
+
+4. NavHost configurado:
+
+   PROYECTO_APP/.../MainActivity.kt
+   → NavController creado con rememberNavController()
+   → NavHost con startDestination = Routes.SPLASH
+   → 9 rutas definidas en Routes.kt:
+     - SPLASH
+     - LOGIN
+     - REGISTER
+     - HOME (con BottomNavigationBar)
+     - MY_REPORTS (con BottomNavigationBar)
+     - MATCH_RESULTS (con BottomNavigationBar)
+     - PROFILE (con BottomNavigationBar)
+     - REPORT_LOST (sin BottomNav, flujo de reporte)
+     - REPORT_FOUND (sin BottomNav, flujo de reporte)
+
+   PROYECTO_APP/.../navigation/Routes.kt
+   → Objeto con constantes de rutas (evita strings hardcodeados)
+
+--- CÓMO DEMOSTRARLO ---
+
+OPCIÓN A — Demo en vivo (con emulador/dispositivo):
+
+  Paso 1: Abrir Android Studio → Ejecutar el proyecto (Run 'app')
+  Paso 2: Mostrar SplashScreen → aparece el logo animado
+  Paso 3: Si no hay sesión → redirige automáticamente a LoginScreen
+  Paso 4: Mostrar que el BottomNav aparece solo en las pantallas correctas
+
+OPCIÓN B — Revisión de código (recomendada para demostrar arquitectura):
+
+  Mostrar en este orden:
+  1. PROYECTO_APP/app/build.gradle.kts
+     → Buscar "hilt" en el archivo → mostrar plugins y dependencias de Hilt
+
+  2. PROYECTO_APP/.../ProyectoApp.kt
+     → @HiltAndroidApp → punto de entrada de Hilt
+
+  3. PROYECTO_APP/.../di/AppModule.kt
+     → @Module con providers → mostrar cómo se inyectan Firebase y Retrofit
+
+  4. Mostrar la estructura de carpetas en Android Studio Project View:
+     → Expandir feature/ → auth/, dogs/, user/ → cada uno con domain/ y data/
+     → Mostrar di/, core/, ui/ como capas separadas
+
+  5. PROYECTO_APP/.../ui/splash/SplashScreen.kt
+     → Animación + verificación de auth + navegación condicional
+
+  6. PROYECTO_APP/.../MainActivity.kt
+     → @AndroidEntryPoint + NavHost + las 9 rutas + lógica de BottomNav
+
+  7. PROYECTO_APP/.../core/result/UiState.kt
+     → sealed class usada en todos los ViewModels
+
+PUNTOS A DESTACAR AL PRESENTAR:
+  - Separación clara en 4 capas: domain, data, di, ui
+  - Las interfaces de repositorio están en domain/ → inversión de dependencias
+  - Las implementaciones en data/ → pueden ser intercambiadas sin tocar el dominio
+  - Hilt elimina boilerplate de inyección manual
+  - UiState sealed class estandariza el manejo de estados en todos los ViewModels
+  - NavHost centraliza toda la navegación en un solo lugar (MainActivity)
+  - SplashScreen decide el flujo de navegación inicial (auth guard)
+
+
+================================================================================
+RESUMEN RÁPIDO PARA PRESENTAR
+================================================================================
+
+TAREA 1 - EfficientNetB4:
+  → Mostrar: WOOF_BACKEND/app/services/model_service.py (función is_dog)
+  → Demo:    POST /api/v1/validate-photo con foto de perro vs foto de otra cosa
+
+TAREA 2 - FastAPI + Firebase + Cloudinary + Firestore:
+  → Mostrar: WOOF_BACKEND/main.py + app/config.py + app/services/firebase_service.py
+  → Demo:    Swagger UI en localhost:8000/docs + Firebase Console con las 3 colecciones
+
+TAREA 3 - App móvil base:
+  → Mostrar: ProyectoApp.kt (@HiltAndroidApp) + di/AppModule.kt + estructura de carpetas
+  → Demo:    Correr la app → SplashScreen → Login + mostrar NavHost en MainActivity.kt
+
+================================================================================
+  Archivo generado: 11/03/2026
+================================================================================

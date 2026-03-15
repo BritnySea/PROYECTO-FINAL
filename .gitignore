@@ -1,0 +1,55 @@
+# ========================
+# Android / Kotlin
+# ========================
+*.iml
+.gradle/
+local.properties
+.idea/
+.DS_Store
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+google-services.json
+
+# ========================
+# Python / Backend
+# ========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.env
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+.pytest_cache/
+
+# Firebase service account key (¡NUNCA subir esto!)
+*serviceAccountKey*.json
+*service_account*.json
+firebase_admin_key.json
+firebase_credentials.json
+
+# Modelo ML entrenado (archivo grande)
+WOOF_BACKEND/ml/*.h5
+WOOF_BACKEND/ml/*.keras
+
+# ========================
+# ML / Jupyter
+# ========================
+*.h5
+*.keras
+*.pkl
+.ipynb_checkpoints/
+
+# ========================
+# General
+# ========================
+*.log
+*.tmp
+Thumbs.db

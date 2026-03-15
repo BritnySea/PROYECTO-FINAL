@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+python-multipart
+tensorflow
+Pillow
+numpy
+scikit-learn
+firebase-admin
+pydantic-settings
+python-dotenv
+cloudinary
