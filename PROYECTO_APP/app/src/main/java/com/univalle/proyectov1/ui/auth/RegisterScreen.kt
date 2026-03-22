@@ -143,7 +143,7 @@ fun RegisterScreen(
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     Text("Crear cuenta", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Divider(modifier = Modifier.padding(vertical = 12.dp), color = Color.White.copy(alpha = 0.1f))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color.White.copy(alpha = 0.1f))
 
                     // Campos personalizados
                     RegisterFieldInternal(label = "Nombre completo", value = name, onValueChange = { name = it }, icon = Icons.Default.Person, placeholder = "Tu nombre", goldColor = Gold)
@@ -276,7 +276,7 @@ fun RegisterScreen(
             when {
                 errorFromGoogle != null -> NotificationBubbleInternal(text = errorFromGoogle.message, isError = true)
                 signUpState is UiState.Error -> NotificationBubbleInternal(text = (signUpState as UiState.Error).message, isError = true)
-                showSuccessBubble -> NotificationBubbleInternal(text = "¡Correo enviado! Verifica tu cuenta para entrar.", isError = false)
+                showSuccessBubble -> NotificationBubbleInternal(text = "¡Correo de verificación enviado! Si no lo ves, revisa tu carpeta de spam.", isError = false)
             }
         }
     }

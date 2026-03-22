@@ -355,7 +355,7 @@ fun LoginScreen(
             ) {
                 NotificationBubbleInternal(
                     text = when (resetState) {
-                        is UiState.Success -> "📧 Se envió un correo para restablecer tu contraseña. Revisa tu bandeja de entrada."
+                        is UiState.Success -> "📧 Se envió un correo para restablecer tu contraseña. Si no lo ves, revisa tu carpeta de spam."
                         is UiState.Error -> resetState.message
                         else -> ""
                     },

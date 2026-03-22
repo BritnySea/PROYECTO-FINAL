@@ -170,7 +170,7 @@ class AuthViewModel @Inject constructor(
                     } else {
                         _signInState.value = UiState.Error(
                             "📧 Debes verificar tu correo antes de iniciar sesión.\n" +
-                                    "Revisa tu bandeja de entrada."
+                                    "Revisa tu bandeja de entrada o carpeta de spam."
                         )
                         repository.signOut()
                     }
