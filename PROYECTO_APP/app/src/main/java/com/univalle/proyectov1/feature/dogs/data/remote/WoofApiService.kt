@@ -67,6 +67,13 @@ interface WoofApiService {
     @POST("api/v1/match-found-dog")
     suspend fun matchFoundDog(
         @Header("Authorization") token: String,
-        @Part photo: MultipartBody.Part
+        @Part photo: MultipartBody.Part,
+        @Part("size") size: RequestBody,
+        @Part("color") color: RequestBody,
+        @Part("sex") sex: RequestBody,
+        @Part("description") description: RequestBody,
+        @Part("reporter_name") reporterName: RequestBody,
+        @Part("reporter_phone") reporterPhone: RequestBody,
+        @Part("reporter_email") reporterEmail: RequestBody,
     ): MatchFoundDogResponse
 }

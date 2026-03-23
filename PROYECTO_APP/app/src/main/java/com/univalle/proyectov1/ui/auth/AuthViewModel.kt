@@ -28,6 +28,9 @@ class AuthViewModel @Inject constructor(
     val signInState: State<UiState<Unit>> = _signInState
 
     private val _resetPasswordState = mutableStateOf<UiState<Unit>>(UiState.Idle)
+
+    private val _confirmResetState = mutableStateOf<UiState<Unit>>(UiState.Idle)
+    val confirmResetState: State<UiState<Unit>> = _confirmResetState
     val resetPasswordState: State<UiState<Unit>> = _resetPasswordState
 
     // ==================== REGISTRO ====================
@@ -262,10 +265,36 @@ class AuthViewModel @Inject constructor(
         _signUpState.value = UiState.Error(message)
     }
 
+    // ==================== CONFIRMAR NUEVA CONTRASEÑA ====================
+    fun confirmPasswordReset(oobCode: String, newPassword: String, confirmPassword: String) {
+        viewModelScope.launch {
+            if (newPassword.length < 8) {
+                _confirmResetState.value = UiState.Error("⚠️ La contraseña debe tener mínimo 8 caracteres")
+                return@launch
+            }
+            if (newPassword != confirmPassword) {
+                _confirmResetState.value = UiState.Error("⚠️ Las contraseñas no coinciden")
+                return@launch
+            }
+            _confirmResetState.value = UiState.Loading
+            try {
+                val result = repository.confirmPasswordReset(oobCode, newPassword)
+                result.onSuccess {
+                    _confirmResetState.value = UiState.Success(Unit)
+                }.onFailure {
+                    _confirmResetState.value = UiState.Error("❌ El enlace expiró o ya fue usado. Solicita uno nuevo.")
+                }
+            } catch (e: Exception) {
+                _confirmResetState.value = UiState.Error("❌ Error inesperado. Intenta nuevamente.")
+            }
+        }
+    }
+
     // ==================== RESETEAR ESTADOS ====================
     fun resetStates() {
         _signInState.value = UiState.Idle
         _signUpState.value = UiState.Idle
         _resetPasswordState.value = UiState.Idle
+        _confirmResetState.value = UiState.Idle
     }
 }

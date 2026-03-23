@@ -137,4 +137,14 @@ class AuthRepositoryImpl(
             Result.failure(e)
         }
     }
+
+    // 9. CONFIRMAR NUEVA CONTRASEÑA (desde enlace de recuperación)
+    override suspend fun confirmPasswordReset(oobCode: String, newPassword: String): Result<Unit> {
+        return try {
+            auth.confirmPasswordReset(oobCode, newPassword).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

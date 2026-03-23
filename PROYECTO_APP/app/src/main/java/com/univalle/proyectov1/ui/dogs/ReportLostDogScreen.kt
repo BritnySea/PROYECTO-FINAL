@@ -1,6 +1,5 @@
 package com.univalle.proyectov1.ui.dogs
 
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -50,7 +49,12 @@ fun ReportLostDogScreen(
     var ownerName by remember { mutableStateOf(user?.displayName ?: "") }
     var ownerPhone by remember { mutableStateOf("") }
     var ownerEmail by remember { mutableStateOf(user?.email ?: "") }
-    var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
+
+    // Auto-rellenar teléfono desde el perfil
+    LaunchedEffect(Unit) {
+        val phone = viewModel.getUserPhone()
+        if (!phone.isNullOrBlank()) ownerPhone = phone
+    }
     var showPhotoTipDialog by remember { mutableStateOf(false) }
 
     val goldGradient = Brush.horizontalGradient(colors = listOf(Gold, GoldLight))
@@ -61,7 +65,7 @@ fun ReportLostDogScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         if (uri != null) {
-            selectedPhotoUri = uri
+            viewModel.lostDogPhotoUri = uri
             viewModel.validatePhoto(context, uri)
         }
     }
@@ -158,9 +162,9 @@ fun ReportLostDogScreen(
                     .clickable { showPhotoTipDialog = true },
                 contentAlignment = Alignment.Center
             ) {
-                if (selectedPhotoUri != null) {
+                if (viewModel.lostDogPhotoUri != null) {
                     AsyncImage(
-                        model = selectedPhotoUri,
+                        model = viewModel.lostDogPhotoUri,
                         contentDescription = "Foto del perro",
                         modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)),
                         contentScale = ContentScale.Crop
@@ -349,11 +353,21 @@ fun ReportLostDogScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
+            // ─── Sexo ─────────────────────────────────────────────────────────
+            DogChipGroup(
+                title = "Sexo *",
+                options = listOf("Macho", "Hembra"),
+                selected = viewModel.dogSex,
+                onSelect = { viewModel.dogSex = it }
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
             // ─── Raza ─────────────────────────────────────────────────────────
             LostDogTextField(
                 value = viewModel.dogBreed,
                 onValueChange = { viewModel.dogBreed = it },
-                label = "Raza *",
+                label = "Raza (opcional)",
                 icon = Icons.Default.Pets,
                 placeholder = "Ej: Labrador, Mestizo, Bulldog..."
             )
@@ -428,17 +442,26 @@ fun ReportLostDogScreen(
 
             // ─── Botón registrar ──────────────────────────────────────────────
             val isLoading = registerState is UiState.Loading
-            val canSubmit = !isLoading && photoValidationState is PhotoValidationState.Valid
+            val finalColorCheck = if (viewModel.dogColor == "Otro") viewModel.dogColorOther else viewModel.dogColor
+            val canSubmit = !isLoading &&
+                photoValidationState is PhotoValidationState.Valid &&
+                dogName.isNotBlank() &&
+                ownerName.isNotBlank() &&
+                ownerPhone.isNotBlank() &&
+                ownerEmail.isNotBlank() &&
+                viewModel.dogSize.isNotBlank() &&
+                finalColorCheck.isNotBlank() &&
+                viewModel.dogSex.isNotBlank()
             Button(
                 onClick = {
-                    if (selectedPhotoUri != null && photoValidationState is PhotoValidationState.Valid) {
+                    if (viewModel.lostDogPhotoUri != null && photoValidationState is PhotoValidationState.Valid) {
                         viewModel.registerLostDog(
                             context = context,
                             dogName = dogName,
                             ownerName = ownerName,
                             ownerPhone = ownerPhone,
                             ownerEmail = ownerEmail,
-                            photoUri = selectedPhotoUri!!
+                            photoUri = viewModel.lostDogPhotoUri!!
                         )
                     }
                 },

@@ -37,7 +37,7 @@ async def validate_photo(
 async def register_lost_dog(
     current_user: Annotated[dict, Depends(verify_firebase_token)],
     dog_name: str = Form(...),
-    description: str = Form(...),
+    description: Optional[str] = Form(None),
     owner_name: str = Form(...),
     owner_phone: str = Form(...),
     owner_email: str = Form(...),
@@ -63,7 +63,7 @@ async def register_lost_dog(
 
     dog_data = {
         "name": dog_name,
-        "description": description,
+        "description": description or "",
         "owner_name": owner_name,
         "owner_phone": owner_phone,
         "owner_email": owner_email,
@@ -88,6 +88,13 @@ async def register_lost_dog(
 async def match_found_dog(
     current_user: Annotated[dict, Depends(verify_firebase_token)],
     photo: UploadFile = File(...),
+    size: Optional[str] = Form(None),
+    color: Optional[str] = Form(None),
+    sex: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    reporter_name: Optional[str] = Form(None),
+    reporter_phone: Optional[str] = Form(None),
+    reporter_email: Optional[str] = Form(None),
 ):
     image_bytes = await photo.read()
 
@@ -150,6 +157,13 @@ async def match_found_dog(
             }
             for m in matches
         ],
+        "size": size or "",
+        "color": color or "",
+        "sex": sex or "",
+        "description": description or "",
+        "reporter_name": reporter_name or "",
+        "reporter_phone": reporter_phone or "",
+        "reporter_email": reporter_email or "",
     }
     firebase_service.save_found_report(report_data)
 

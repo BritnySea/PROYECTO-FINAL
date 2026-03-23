@@ -17,10 +17,20 @@ interface DogsRepository {
         size: String = "",
         color: String = "",
         breed: String = "",
-        lostLocation: String = ""
+        lostLocation: String = "",
+        sex: String = ""
     ): Result<String>
 
-    suspend fun matchFoundDog(photo: File): Result<List<DogMatch>>
+    suspend fun matchFoundDog(
+        photo: File,
+        size: String = "",
+        color: String = "",
+        sex: String = "",
+        description: String = "",
+        reporterName: String = "",
+        reporterPhone: String = "",
+        reporterEmail: String = ""
+    ): Result<List<DogMatch>>
 
     suspend fun getMyLostDogs(): List<Dog>
 }

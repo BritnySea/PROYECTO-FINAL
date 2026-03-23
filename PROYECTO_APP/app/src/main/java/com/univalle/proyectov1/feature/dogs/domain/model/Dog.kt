@@ -13,7 +13,8 @@ data class Dog(
     val uid: String = "",
     val size: String = "",
     val color: String = "",
-    val breed: String = ""
+    val breed: String = "",
+    val sex: String = ""
 )
 
 data class DogMatch(

@@ -10,4 +10,5 @@ object Routes {
     const val REPORT_FOUND = "report_found"
     const val MATCH_RESULTS = "match_results"
     const val MY_REPORTS = "my_reports"
+    const val RESET_PASSWORD = "reset_password/{oobCode}"
 }

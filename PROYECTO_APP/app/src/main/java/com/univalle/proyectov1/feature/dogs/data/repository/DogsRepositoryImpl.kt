@@ -49,7 +49,8 @@ class DogsRepositoryImpl @Inject constructor(
         size: String,
         color: String,
         breed: String,
-        lostLocation: String
+        lostLocation: String,
+        sex: String
     ): Result<String> {
         return try {
             val token = getBearerToken()
@@ -69,19 +70,43 @@ class DogsRepositoryImpl @Inject constructor(
                 breed = breed.toRequestBody("text/plain".toMediaTypeOrNull()),
                 lostLocation = lostLocation.toRequestBody("text/plain".toMediaTypeOrNull())
             )
+            // Guardar sex directamente en Firestore ya que el campo no está en la API
+            if (sex.isNotBlank()) {
+                db.collection("lost_dogs").document(response.dogId)
+                    .update("sex", sex).await()
+            }
             Result.success(response.dogId)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    override suspend fun matchFoundDog(photo: File): Result<List<DogMatch>> {
+    override suspend fun matchFoundDog(
+        photo: File,
+        size: String,
+        color: String,
+        sex: String,
+        description: String,
+        reporterName: String,
+        reporterPhone: String,
+        reporterEmail: String
+    ): Result<List<DogMatch>> {
         return try {
             val token = getBearerToken()
             val photoBody = photo.asRequestBody("image/*".toMediaTypeOrNull())
             val photoPart = MultipartBody.Part.createFormData("photo", photo.name, photoBody)
 
-            val response = api.matchFoundDog(token = token, photo = photoPart)
+            val response = api.matchFoundDog(
+                token = token,
+                photo = photoPart,
+                size = size.toRequestBody("text/plain".toMediaTypeOrNull()),
+                color = color.toRequestBody("text/plain".toMediaTypeOrNull()),
+                sex = sex.toRequestBody("text/plain".toMediaTypeOrNull()),
+                description = description.toRequestBody("text/plain".toMediaTypeOrNull()),
+                reporterName = reporterName.toRequestBody("text/plain".toMediaTypeOrNull()),
+                reporterPhone = reporterPhone.toRequestBody("text/plain".toMediaTypeOrNull()),
+                reporterEmail = reporterEmail.toRequestBody("text/plain".toMediaTypeOrNull()),
+            )
 
             if (!response.isDog) {
                 return Result.failure(Exception("La foto no muestra un perro"))
@@ -121,7 +146,8 @@ class DogsRepositoryImpl @Inject constructor(
                     photoUrl = doc.getString("photo_url") ?: "",
                     status = doc.getString("status") ?: "active",
                     createdAt = doc.getTimestamp("created_at")?.toDate()?.toString() ?: "",
-                    uid = uid
+                    uid = uid,
+                    sex = doc.getString("sex") ?: ""
                 )
             }
         } catch (e: Exception) {

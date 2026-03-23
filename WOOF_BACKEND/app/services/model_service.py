@@ -1,5 +1,5 @@
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageFilter
 import io
 import tensorflow as tf
 from tensorflow.keras.applications.efficientnet import preprocess_input
@@ -37,8 +37,29 @@ def is_model_loaded() -> bool:
     return _full_model is not None
 
 
+def _enhance_image(image: Image.Image) -> Image.Image:
+    # Brillo: sube ligeramente si la imagen es oscura
+    avg_brightness = np.array(image).mean()
+    if avg_brightness < 100:
+        image = ImageEnhance.Brightness(image).enhance(1.4)
+    elif avg_brightness < 140:
+        image = ImageEnhance.Brightness(image).enhance(1.15)
+
+    # Contraste
+    image = ImageEnhance.Contrast(image).enhance(1.3)
+
+    # Nitidez (sharpening) para fotos borrosas
+    image = ImageEnhance.Sharpness(image).enhance(2.0)
+    image = image.filter(ImageFilter.UnsharpMask(radius=1, percent=120, threshold=3))
+
+    return image
+
+
 def _preprocess_image(image_bytes: bytes) -> np.ndarray:
     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+
+    # Mejorar calidad antes de pasar al modelo
+    image = _enhance_image(image)
 
     # Escalar manteniendo aspect ratio hasta que el lado más largo sea IMAGE_SIZE
     w, h = image.size

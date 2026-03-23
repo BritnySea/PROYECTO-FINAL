@@ -15,4 +15,5 @@ interface AuthRepository {
     // Result.success(false) si ya está verificada,
     // Result.failure si las credenciales no coinciden.
     suspend fun signInAndResendVerification(email: String, password: String): Result<Boolean>
+    suspend fun confirmPasswordReset(oobCode: String, newPassword: String): Result<Unit>
 }

@@ -41,14 +41,27 @@ class DogsViewModel @Inject constructor(
 
     // ─── Photo validation ─────────────────────────────────────────────────────
     var photoValidationState by mutableStateOf<PhotoValidationState>(PhotoValidationState.Idle)
+    var lostDogPhotoUri by mutableStateOf<android.net.Uri?>(null)
 
     // Form state for new structured fields
     var dogSize by mutableStateOf("")
     var dogColor by mutableStateOf("")
     var dogColorOther by mutableStateOf("")
     var dogBreed by mutableStateOf("")
+    var dogSex by mutableStateOf("")
     var particularSigns by mutableStateOf("")
     var lostLocation by mutableStateOf("")
+
+    // ─── Photo validation (found dog) ─────────────────────────────────────────
+    var foundPhotoValidationState by mutableStateOf<PhotoValidationState>(PhotoValidationState.Idle)
+    var foundDogPhotoUri by mutableStateOf<android.net.Uri?>(null)
+
+    // Form state for found dog
+    var foundDogSize by mutableStateOf("")
+    var foundDogColor by mutableStateOf("")
+    var foundDogColorOther by mutableStateOf("")
+    var foundDogSex by mutableStateOf("")
+    var foundDogSigns by mutableStateOf("")
 
     // ─── Match Found Dog ──────────────────────────────────────────────────────
     private val _matchState = MutableStateFlow<UiState<List<DogMatch>>>(UiState.Idle)
@@ -67,6 +80,7 @@ class DogsViewModel @Inject constructor(
 
     // ─── Phone gate ───────────────────────────────────────────────────────────
     suspend fun hasPhone(): Boolean = userRepository.hasPhone()
+    suspend fun getUserPhone(): String? = userRepository.getUserPhone()
 
     // ─── Actions ──────────────────────────────────────────────────────────────
 
@@ -109,8 +123,8 @@ class DogsViewModel @Inject constructor(
                 _registerState.value = UiState.Error("Selecciona o describe el color del perro")
                 return@launch
             }
-            if (dogBreed.isBlank()) {
-                _registerState.value = UiState.Error("Escribe la raza del perro")
+            if (dogSex.isBlank()) {
+                _registerState.value = UiState.Error("Selecciona el sexo del perro")
                 return@launch
             }
             _registerState.value = UiState.Loading
@@ -126,7 +140,8 @@ class DogsViewModel @Inject constructor(
                     size = dogSize,
                     color = finalColor,
                     breed = dogBreed,
-                    lostLocation = lostLocation
+                    lostLocation = lostLocation,
+                    sex = dogSex
                 )
                 _registerState.value = result.fold(
                     onSuccess = { UiState.Success(Unit) },
@@ -143,17 +158,81 @@ class DogsViewModel @Inject constructor(
         dogColor = ""
         dogColorOther = ""
         dogBreed = ""
+        dogSex = ""
         particularSigns = ""
         lostLocation = ""
         photoValidationState = PhotoValidationState.Idle
+        lostDogPhotoUri = null
     }
 
-    fun matchFoundDog(context: Context, photoUri: Uri) {
+    fun validateFoundPhoto(context: Context, uri: Uri) {
         viewModelScope.launch {
+            foundPhotoValidationState = PhotoValidationState.Loading
+            try {
+                val file = uriToFile(context, uri)
+                val result = dogsRepository.validatePhoto(file)
+                foundPhotoValidationState = result.fold(
+                    onSuccess = { PhotoValidationState.Valid },
+                    onFailure = { PhotoValidationState.Invalid(it.message ?: "Foto no válida") }
+                )
+            } catch (e: Exception) {
+                foundPhotoValidationState = PhotoValidationState.Invalid("Error al analizar la foto")
+            }
+        }
+    }
+
+    fun matchFoundDog(
+        context: Context,
+        photoUri: Uri,
+        reporterName: String,
+        reporterPhone: String,
+        reporterEmail: String
+    ) {
+        viewModelScope.launch {
+            val finalColor = if (foundDogColor == "Otro") foundDogColorOther else foundDogColor
+
+            if (foundDogSize.isBlank()) {
+                _matchState.value = UiState.Error("Selecciona el tamaño del perro")
+                return@launch
+            }
+            if (finalColor.isBlank()) {
+                _matchState.value = UiState.Error("Selecciona o describe el color del perro")
+                return@launch
+            }
+            if (reporterName.isBlank()) {
+                _matchState.value = UiState.Error("Ingresa tu nombre")
+                return@launch
+            }
+            if (reporterPhone.isBlank()) {
+                _matchState.value = UiState.Error("Ingresa tu teléfono de contacto")
+                return@launch
+            }
+            if (reporterPhone.filter { it.isDigit() }.length < 7) {
+                _matchState.value = UiState.Error("El teléfono debe tener al menos 7 dígitos")
+                return@launch
+            }
+            if (reporterEmail.isBlank()) {
+                _matchState.value = UiState.Error("Ingresa tu correo electrónico")
+                return@launch
+            }
+            if (!reporterEmail.contains("@") || !reporterEmail.contains(".")) {
+                _matchState.value = UiState.Error("El correo electrónico no es válido")
+                return@launch
+            }
+
             _matchState.value = UiState.Loading
             try {
                 val file = uriToFile(context, photoUri)
-                val result = dogsRepository.matchFoundDog(file)
+                val result = dogsRepository.matchFoundDog(
+                    photo = file,
+                    size = foundDogSize,
+                    color = finalColor,
+                    sex = foundDogSex,
+                    description = foundDogSigns,
+                    reporterName = reporterName,
+                    reporterPhone = reporterPhone,
+                    reporterEmail = reporterEmail
+                )
                 result.fold(
                     onSuccess = { matches ->
                         _matchResults.value = matches
@@ -167,6 +246,16 @@ class DogsViewModel @Inject constructor(
                 _matchState.value = UiState.Error(e.message ?: "Error inesperado")
             }
         }
+    }
+
+    fun resetFoundDogForm() {
+        foundDogSize = ""
+        foundDogColor = ""
+        foundDogColorOther = ""
+        foundDogSex = ""
+        foundDogSigns = ""
+        foundPhotoValidationState = PhotoValidationState.Idle
+        foundDogPhotoUri = null
     }
 
     fun loadMyDogs() {

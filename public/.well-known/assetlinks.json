@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.univalle.proyectov1",
+    "sha256_cert_fingerprints": [
+      "9D:57:03:21:EA:7F:25:57:93:82:B7:EA:75:EB:DA:E2:6D:2D:82:07:8F:B7:4E:D7:0F:F4:A1:2B:A3:35:EA:D7"
+    ]
+  }
+}]

@@ -39,6 +39,7 @@ import com.univalle.proyectov1.ui.navigation.Routes
 import com.univalle.proyectov1.ui.profile.ProfileScreen
 import com.univalle.proyectov1.ui.profile.ProfileViewModel
 import com.univalle.proyectov1.ui.session.SessionViewModel
+import com.univalle.proyectov1.ui.auth.ResetPasswordScreen
 import com.univalle.proyectov1.ui.splash.SplashScreen
 import com.univalle.proyectov1.ui.theme.Gold
 import com.univalle.proyectov1.ui.theme.Proyectov1Theme
@@ -72,6 +73,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         requestNotificationPermission()
         saveFcmToken()
+
+        // Extraer oobCode si la app fue abierta desde un enlace de recuperación de contraseña
+        val deepLinkOobCode = intent?.data?.let { uri ->
+            if (uri.getQueryParameter("mode") == "resetPassword")
+                uri.getQueryParameter("oobCode")
+            else null
+        }
+
         setContent {
             Proyectov1Theme {
                 val navController = rememberNavController()
@@ -82,6 +91,15 @@ class MainActivity : ComponentActivity() {
                 val startRoute =
                     if (currentUser != null && currentUser.isEmailVerified) Routes.HOME
                     else Routes.LOGIN
+
+                // Si viene de un deep link de recuperación, navegar a esa pantalla
+                LaunchedEffect(deepLinkOobCode) {
+                    if (deepLinkOobCode != null) {
+                        navController.navigate("reset_password/$deepLinkOobCode") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                }
 
                 // Pantallas que muestran BottomNav
                 val bottomNavRoutes = setOf(
@@ -259,6 +277,19 @@ class MainActivity : ComponentActivity() {
                                     showPhoneBanner = showBanner,
                                     onSignOut = {
                                         FirebaseAuth.getInstance().signOut()
+                                        navController.navigate(Routes.LOGIN) {
+                                            popUpTo(0) { inclusive = true }
+                                        }
+                                    }
+                                )
+                            }
+
+                            // ── Reset Password (deep link) ────────────────────
+                            composable(Routes.RESET_PASSWORD) { backStack ->
+                                val oobCode = backStack.arguments?.getString("oobCode") ?: ""
+                                ResetPasswordScreen(
+                                    oobCode = oobCode,
+                                    onSuccess = {
                                         navController.navigate(Routes.LOGIN) {
                                             popUpTo(0) { inclusive = true }
                                         }
