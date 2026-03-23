@@ -85,7 +85,6 @@ fun MyReportsScreen(
             }
         }
 
-        // FAB para agregar reporte
         FloatingActionButton(
             onClick = onNavigateToReport,
             modifier = Modifier
@@ -112,7 +111,6 @@ private fun MyDogCard(dog: Dog) {
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Foto
             if (dog.photoUrl.isNotBlank()) {
                 AsyncImage(
                     model = dog.photoUrl,
@@ -152,7 +150,6 @@ private fun MyDogCard(dog: Dog) {
                 }
             }
 
-            // Badge estado
             Surface(
                 shape = RoundedCornerShape(8.dp),
                 color = Color(0xFF1B5E20).copy(alpha = 0.8f)

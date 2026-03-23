@@ -3,10 +3,12 @@ package com.univalle.proyectov1.feature.dogs.data.remote
 import com.google.gson.annotations.SerializedName
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
+import retrofit2.http.Query
 
 // ─── Response models ─────────────────────────────────────────────────────────
 
@@ -34,6 +36,24 @@ data class MatchFoundDogResponse(
     val matches: List<DogMatchResponse>,
     @SerializedName("is_dog") val isDog: Boolean,
     val message: String
+)
+
+data class OwnerMatchItemResponse(
+    @SerializedName("report_id") val reportId: String,
+    @SerializedName("found_dog_photo_url") val foundDogPhotoUrl: String,
+    @SerializedName("similarity_percent") val similarityPercent: Float,
+    @SerializedName("reporter_name") val reporterName: String,
+    @SerializedName("reporter_phone") val reporterPhone: String,
+    @SerializedName("reporter_email") val reporterEmail: String,
+    @SerializedName("found_dog_size") val foundDogSize: String,
+    @SerializedName("found_dog_color") val foundDogColor: String,
+    @SerializedName("found_dog_sex") val foundDogSex: String,
+    @SerializedName("found_dog_description") val foundDogDescription: String,
+    @SerializedName("reported_at") val reportedAt: String
+)
+
+data class OwnerMatchesApiResponse(
+    val matches: List<OwnerMatchItemResponse>
 )
 
 // ─── Retrofit interface ───────────────────────────────────────────────────────
@@ -76,4 +96,10 @@ interface WoofApiService {
         @Part("reporter_phone") reporterPhone: RequestBody,
         @Part("reporter_email") reporterEmail: RequestBody,
     ): MatchFoundDogResponse
+
+    @GET("api/v1/my-dog-matches")
+    suspend fun getMatchesForDog(
+        @Header("Authorization") token: String,
+        @Query("dog_id") dogId: String
+    ): OwnerMatchesApiResponse
 }

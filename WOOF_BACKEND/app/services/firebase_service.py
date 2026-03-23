@@ -31,12 +31,12 @@ def initialize_firebase() -> None:
     print("[firebase_service] Firebase y Cloudinary inicializados.")
 
 
-def upload_photo(image_bytes: bytes, filename: str | None = None) -> str:
+def upload_photo(image_bytes: bytes, filename: str | None = None, folder: str = "dog_photos") -> str:
     public_id = filename.replace(".jpg", "") if filename else uuid.uuid4().hex
 
     result = cloudinary.uploader.upload(
         image_bytes,
-        public_id=f"dog_photos/{public_id}",
+        public_id=f"{folder}/{public_id}",
         resource_type="image",
     )
     return result["secure_url"]
@@ -103,6 +103,46 @@ def send_match_notification(owner_uid: str, dog_name: str, similarity_percent: f
         print(f"[FCM] Notificacion enviada al dueño {owner_uid} por coincidencia de '{dog_name}'")
     except Exception as e:
         print(f"[FCM] Error enviando notificacion a {owner_uid}: {e}")
+
+
+def get_matches_for_dog(dog_id: str, top_k: int = 5) -> list[dict]:
+    if _db is None:
+        raise RuntimeError("Firebase no inicializado.")
+
+    docs = (
+        _db.collection("found_dog_reports")
+        .where("matched_dog_ids", "array_contains", dog_id)
+        .stream()
+    )
+
+    results = []
+    for doc in docs:
+        data = doc.to_dict()
+        similarity = 0.0
+        for m in data.get("matches", []):
+            if m.get("dog_id") == dog_id:
+                similarity = m.get("similarity_percent", 0.0)
+                break
+
+        created_at = data.get("created_at")
+        reported_at = created_at.strftime("%Y-%m-%d %H:%M") if created_at else ""
+
+        results.append({
+            "report_id": doc.id,
+            "found_dog_photo_url": data.get("found_dog_photo_url", ""),
+            "similarity_percent": similarity,
+            "reporter_name": data.get("reporter_name", ""),
+            "reporter_phone": data.get("reporter_phone", ""),
+            "reporter_email": data.get("reporter_email", ""),
+            "found_dog_size": data.get("size", ""),
+            "found_dog_color": data.get("color", ""),
+            "found_dog_sex": data.get("sex", ""),
+            "found_dog_description": data.get("description", ""),
+            "reported_at": reported_at,
+        })
+
+    results.sort(key=lambda x: x["similarity_percent"], reverse=True)
+    return results[:top_k]
 
 
 def save_found_report(report_data: dict) -> str:

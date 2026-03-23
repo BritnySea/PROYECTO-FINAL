@@ -6,13 +6,14 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from sklearn.metrics.pairwise import cosine_similarity
 
 from app.dependencies import verify_firebase_token
-from app.schemas.dog import DogMatch, MatchFoundDogResponse, RegisterLostDogResponse, ValidatePhotoResponse
+from app.schemas.dog import DogMatch, MatchFoundDogResponse, OwnerMatchesResponse, RegisterLostDogResponse, ValidatePhotoResponse
 from app.services import firebase_service, model_service
 
 router = APIRouter()
 
-SIMILARITY_THRESHOLD = 20.0  # percent
-TOP_K = 10
+SIMILARITY_THRESHOLD = 20.0  # percent para mostrar coincidencias
+NOTIFICATION_THRESHOLD = 80.0  # percent para enviar notificación
+TOP_K = 5
 
 
 @router.post("/validate-photo", response_model=ValidatePhotoResponse, summary="Validar si la foto muestra un perro")
@@ -105,6 +106,10 @@ async def match_found_dog(
             detail=f"La foto no muestra un perro (confianza: {confidence:.2%}).",
         )
 
+    # Subir foto del perro encontrado a Cloudinary
+    found_filename = f"found_{uuid.uuid4().hex}.jpg"
+    found_photo_url = firebase_service.upload_photo(image_bytes, found_filename, folder="found_dog_photos")
+
     embedding_found = model_service.get_embedding(image_bytes)
     emb_found_arr = np.array(embedding_found).reshape(1, -1)
 
@@ -138,18 +143,21 @@ async def match_found_dog(
         for sim_pct, dog in top_matches
     ]
 
-    # Notificar a los dueños de los perros que coincidieron
+    # Notificar solo si similitud >= 80%
     for sim_pct, dog in top_matches:
-        owner_uid = dog.get("registered_by_uid")
-        if owner_uid:
-            firebase_service.send_match_notification(
-                owner_uid=owner_uid,
-                dog_name=dog.get("name", "tu perro"),
-                similarity_percent=sim_pct,
-            )
+        if sim_pct >= NOTIFICATION_THRESHOLD:
+            owner_uid = dog.get("registered_by_uid")
+            if owner_uid:
+                firebase_service.send_match_notification(
+                    owner_uid=owner_uid,
+                    dog_name=dog.get("name", "tu perro"),
+                    similarity_percent=sim_pct,
+                )
 
     report_data = {
         "found_by_uid": current_user.get("uid"),
+        "found_dog_photo_url": found_photo_url,
+        "matched_dog_ids": [m.dog_id for m in matches],
         "matches": [
             {
                 "dog_id": m.dog_id,
@@ -178,3 +186,14 @@ async def match_found_dog(
         is_dog=True,
         message=message,
     )
+
+
+@router.get("/my-dog-matches", response_model=OwnerMatchesResponse, summary="Obtener coincidencias para un perro perdido del usuario")
+async def get_my_dog_matches(
+    current_user: Annotated[dict, Depends(verify_firebase_token)],
+    dog_id: str,
+):
+    raw_matches = firebase_service.get_matches_for_dog(dog_id)
+    from app.schemas.dog import OwnerMatchItem
+    items = [OwnerMatchItem(**m) for m in raw_matches]
+    return OwnerMatchesResponse(matches=items)

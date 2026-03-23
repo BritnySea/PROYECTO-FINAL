@@ -22,7 +22,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.Image
+import com.univalle.proyectov1.R
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -85,12 +88,24 @@ fun ReportFoundDogScreen(
                 Text("Consejo para mejor resultado", color = Gold, fontWeight = FontWeight.Bold)
             },
             text = {
-                Text(
-                    "Toma la foto de frente al perro. Nuestro modelo de IA fue entrenado principalmente con fotos frontales, aunque también funciona con otros ángulos.\n\nLa foto debe ser clara y bien iluminada.",
-                    color = Color.White.copy(alpha = 0.85f),
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp
-                )
+                Column {
+                    Image(
+                        painter = painterResource(id = R.drawable.dog_photo_reference),
+                        contentDescription = "Ejemplo de foto correcta",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        "Toma la foto de frente al perro. Nuestro modelo de IA fue entrenado principalmente con fotos frontales, aunque también funciona con otros ángulos.\n\nLa foto debe ser clara y bien iluminada.",
+                        color = Color.White.copy(alpha = 0.85f),
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp
+                    )
+                }
             },
             confirmButton = {
                 TextButton(onClick = {

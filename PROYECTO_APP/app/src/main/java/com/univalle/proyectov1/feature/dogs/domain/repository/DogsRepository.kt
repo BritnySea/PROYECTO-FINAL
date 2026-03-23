@@ -2,6 +2,7 @@ package com.univalle.proyectov1.feature.dogs.domain.repository
 
 import com.univalle.proyectov1.feature.dogs.domain.model.Dog
 import com.univalle.proyectov1.feature.dogs.domain.model.DogMatch
+import com.univalle.proyectov1.feature.dogs.domain.model.FoundDogMatchForOwner
 import java.io.File
 
 interface DogsRepository {
@@ -33,4 +34,6 @@ interface DogsRepository {
     ): Result<List<DogMatch>>
 
     suspend fun getMyLostDogs(): List<Dog>
+
+    suspend fun getMatchesForDog(dogId: String): Result<List<FoundDogMatchForOwner>>
 }

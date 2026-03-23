@@ -5,6 +5,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.univalle.proyectov1.feature.dogs.data.remote.WoofApiService
 import com.univalle.proyectov1.feature.dogs.domain.model.Dog
 import com.univalle.proyectov1.feature.dogs.domain.model.DogMatch
+import com.univalle.proyectov1.feature.dogs.domain.model.FoundDogMatchForOwner
 import com.univalle.proyectov1.feature.dogs.domain.repository.DogsRepository
 import kotlinx.coroutines.tasks.await
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -152,6 +153,31 @@ class DogsRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             emptyList()
+        }
+    }
+
+    override suspend fun getMatchesForDog(dogId: String): Result<List<FoundDogMatchForOwner>> {
+        return try {
+            val token = getBearerToken()
+            val response = api.getMatchesForDog(token = token, dogId = dogId)
+            val matches = response.matches.map { m ->
+                FoundDogMatchForOwner(
+                    reportId = m.reportId,
+                    foundDogPhotoUrl = m.foundDogPhotoUrl,
+                    similarityPercent = m.similarityPercent,
+                    reporterName = m.reporterName,
+                    reporterPhone = m.reporterPhone,
+                    reporterEmail = m.reporterEmail,
+                    foundDogSize = m.foundDogSize,
+                    foundDogColor = m.foundDogColor,
+                    foundDogSex = m.foundDogSex,
+                    foundDogDescription = m.foundDogDescription,
+                    reportedAt = m.reportedAt
+                )
+            }
+            Result.success(matches)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 }

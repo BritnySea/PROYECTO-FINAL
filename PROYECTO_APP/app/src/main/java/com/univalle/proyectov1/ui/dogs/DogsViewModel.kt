@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import com.univalle.proyectov1.core.result.UiState
 import com.univalle.proyectov1.feature.dogs.domain.model.Dog
 import com.univalle.proyectov1.feature.dogs.domain.model.DogMatch
+import com.univalle.proyectov1.feature.dogs.domain.model.FoundDogMatchForOwner
 import com.univalle.proyectov1.feature.dogs.domain.repository.DogsRepository
 import com.univalle.proyectov1.feature.user.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -77,6 +78,12 @@ class DogsViewModel @Inject constructor(
 
     private val _myDogsLoading = MutableStateFlow(false)
     val myDogsLoading: StateFlow<Boolean> = _myDogsLoading
+
+    private val _ownerMatches = MutableStateFlow<List<FoundDogMatchForOwner>>(emptyList())
+    val ownerMatches: StateFlow<List<FoundDogMatchForOwner>> = _ownerMatches
+
+    private val _ownerMatchesLoading = MutableStateFlow(false)
+    val ownerMatchesLoading: StateFlow<Boolean> = _ownerMatchesLoading
 
     // ─── Phone gate ───────────────────────────────────────────────────────────
     suspend fun hasPhone(): Boolean = userRepository.hasPhone()
@@ -263,6 +270,15 @@ class DogsViewModel @Inject constructor(
             _myDogsLoading.value = true
             _myDogs.value = dogsRepository.getMyLostDogs()
             _myDogsLoading.value = false
+        }
+    }
+
+    fun loadMatchesForDog(dogId: String) {
+        viewModelScope.launch {
+            _ownerMatchesLoading.value = true
+            val result = dogsRepository.getMatchesForDog(dogId)
+            _ownerMatches.value = result.getOrDefault(emptyList())
+            _ownerMatchesLoading.value = false
         }
     }
 
