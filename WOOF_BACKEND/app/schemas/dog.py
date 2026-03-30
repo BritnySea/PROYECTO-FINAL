@@ -44,3 +44,18 @@ class OwnerMatchItem(BaseModel):
 
 class OwnerMatchesResponse(BaseModel):
     matches: List[OwnerMatchItem]
+
+
+class MyFoundReportItem(BaseModel):
+    report_id: str
+    photo_url: str
+    status: str
+    created_at: str
+    size: str
+    color: str
+    sex: str
+    description: str
+
+
+class MyFoundReportsResponse(BaseModel):
+    reports: List[MyFoundReportItem]

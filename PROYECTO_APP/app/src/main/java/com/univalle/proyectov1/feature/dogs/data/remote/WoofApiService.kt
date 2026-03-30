@@ -6,6 +6,7 @@ import okhttp3.RequestBody
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.Multipart
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Part
 import retrofit2.http.Query
@@ -56,6 +57,21 @@ data class OwnerMatchesApiResponse(
     val matches: List<OwnerMatchItemResponse>
 )
 
+data class MyFoundReportItemResponse(
+    @SerializedName("report_id") val reportId: String,
+    @SerializedName("photo_url") val photoUrl: String,
+    val status: String,
+    @SerializedName("created_at") val createdAt: String,
+    val size: String,
+    val color: String,
+    val sex: String,
+    val description: String
+)
+
+data class MyFoundReportsApiResponse(
+    val reports: List<MyFoundReportItemResponse>
+)
+
 // ─── Retrofit interface ───────────────────────────────────────────────────────
 
 interface WoofApiService {
@@ -63,6 +79,20 @@ interface WoofApiService {
     @Multipart
     @POST("api/v1/validate-photo")
     suspend fun validatePhoto(
+        @Header("Authorization") token: String,
+        @Part photo: MultipartBody.Part
+    ): ValidatePhotoResponse
+
+    @Multipart
+    @POST("api/v1/validate-lost-photo")
+    suspend fun validateLostPhoto(
+        @Header("Authorization") token: String,
+        @Part photo: MultipartBody.Part
+    ): ValidatePhotoResponse
+
+    @Multipart
+    @POST("api/v1/validate-found-photo")
+    suspend fun validateFoundPhoto(
         @Header("Authorization") token: String,
         @Part photo: MultipartBody.Part
     ): ValidatePhotoResponse
@@ -102,4 +132,16 @@ interface WoofApiService {
         @Header("Authorization") token: String,
         @Query("dog_id") dogId: String
     ): OwnerMatchesApiResponse
+
+    @GET("api/v1/my-found-reports")
+    suspend fun getMyFoundReports(
+        @Header("Authorization") token: String
+    ): MyFoundReportsApiResponse
+
+    @PATCH("api/v1/found-report-status")
+    suspend fun updateFoundReportStatus(
+        @Header("Authorization") token: String,
+        @Query("report_id") reportId: String,
+        @Query("active") active: Boolean
+    )
 }

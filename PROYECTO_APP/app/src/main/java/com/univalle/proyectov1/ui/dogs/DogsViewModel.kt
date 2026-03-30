@@ -13,6 +13,8 @@ import com.univalle.proyectov1.core.result.UiState
 import com.univalle.proyectov1.feature.dogs.domain.model.Dog
 import com.univalle.proyectov1.feature.dogs.domain.model.DogMatch
 import com.univalle.proyectov1.feature.dogs.domain.model.FoundDogMatchForOwner
+import com.univalle.proyectov1.feature.dogs.domain.model.MyReport
+import com.univalle.proyectov1.feature.dogs.domain.model.ReportType
 import com.univalle.proyectov1.feature.dogs.domain.repository.DogsRepository
 import com.univalle.proyectov1.feature.user.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -79,6 +81,19 @@ class DogsViewModel @Inject constructor(
     private val _myDogsLoading = MutableStateFlow(false)
     val myDogsLoading: StateFlow<Boolean> = _myDogsLoading
 
+    private val _deactivateState = MutableStateFlow<UiState<Unit>>(UiState.Idle)
+    val deactivateState: StateFlow<UiState<Unit>> = _deactivateState
+
+    // ─── My Reports (lost + found) ────────────────────────────────────────────
+    private val _myReports = MutableStateFlow<List<MyReport>>(emptyList())
+    val myReports: StateFlow<List<MyReport>> = _myReports
+
+    private val _myReportsLoading = MutableStateFlow(false)
+    val myReportsLoading: StateFlow<Boolean> = _myReportsLoading
+
+    private val _reportActionState = MutableStateFlow<UiState<Unit>>(UiState.Idle)
+    val reportActionState: StateFlow<UiState<Unit>> = _reportActionState
+
     private val _ownerMatches = MutableStateFlow<List<FoundDogMatchForOwner>>(emptyList())
     val ownerMatches: StateFlow<List<FoundDogMatchForOwner>> = _ownerMatches
 
@@ -96,7 +111,7 @@ class DogsViewModel @Inject constructor(
             photoValidationState = PhotoValidationState.Loading
             try {
                 val file = uriToFile(context, uri)
-                val result = dogsRepository.validatePhoto(file)
+                val result = dogsRepository.validateLostPhoto(file)
                 photoValidationState = result.fold(
                     onSuccess = { PhotoValidationState.Valid },
                     onFailure = { PhotoValidationState.Invalid(it.message ?: "Foto no válida") }
@@ -150,12 +165,16 @@ class DogsViewModel @Inject constructor(
                     lostLocation = lostLocation,
                     sex = dogSex
                 )
-                _registerState.value = result.fold(
-                    onSuccess = { UiState.Success(Unit) },
-                    onFailure = { UiState.Error(it.message ?: "Error al registrar") }
+                result.fold(
+                    onSuccess = { _registerState.value = UiState.Success(Unit) },
+                    onFailure = {
+                        photoValidationState = PhotoValidationState.Invalid(it.message ?: "Error al registrar")
+                        _registerState.value = UiState.Idle
+                    }
                 )
             } catch (e: Exception) {
-                _registerState.value = UiState.Error(e.message ?: "Error inesperado")
+                photoValidationState = PhotoValidationState.Invalid(e.message ?: "Error inesperado")
+                _registerState.value = UiState.Idle
             }
         }
     }
@@ -177,7 +196,7 @@ class DogsViewModel @Inject constructor(
             foundPhotoValidationState = PhotoValidationState.Loading
             try {
                 val file = uriToFile(context, uri)
-                val result = dogsRepository.validatePhoto(file)
+                val result = dogsRepository.validateFoundPhoto(file)
                 foundPhotoValidationState = result.fold(
                     onSuccess = { PhotoValidationState.Valid },
                     onFailure = { PhotoValidationState.Invalid(it.message ?: "Foto no válida") }
@@ -246,11 +265,13 @@ class DogsViewModel @Inject constructor(
                         _matchState.value = UiState.Success(matches)
                     },
                     onFailure = {
-                        _matchState.value = UiState.Error(it.message ?: "Error al buscar coincidencias")
+                        foundPhotoValidationState = PhotoValidationState.Invalid(it.message ?: "Error al buscar coincidencias")
+                        _matchState.value = UiState.Idle
                     }
                 )
             } catch (e: Exception) {
-                _matchState.value = UiState.Error(e.message ?: "Error inesperado")
+                foundPhotoValidationState = PhotoValidationState.Invalid(e.message ?: "Error inesperado")
+                _matchState.value = UiState.Idle
             }
         }
     }
@@ -272,6 +293,61 @@ class DogsViewModel @Inject constructor(
             _myDogsLoading.value = false
         }
     }
+
+    fun deactivateDog(dogId: String) {
+        viewModelScope.launch {
+            _deactivateState.value = UiState.Loading
+            val result = dogsRepository.deactivateDog(dogId)
+            result.fold(
+                onSuccess = {
+                    _myDogs.value = _myDogs.value.map { dog ->
+                        if (dog.id == dogId) dog.copy(status = "inactive") else dog
+                    }
+                    _deactivateState.value = UiState.Success(Unit)
+                },
+                onFailure = {
+                    _deactivateState.value = UiState.Error(it.message ?: "Error al desactivar")
+                }
+            )
+        }
+    }
+
+    fun resetDeactivateState() { _deactivateState.value = UiState.Idle }
+
+    fun loadMyReports() {
+        viewModelScope.launch {
+            _myReportsLoading.value = true
+            _myReports.value = dogsRepository.getMyReports()
+            _myReportsLoading.value = false
+        }
+    }
+
+    fun updateReportStatus(id: String, type: ReportType, active: Boolean) {
+        viewModelScope.launch {
+            _reportActionState.value = UiState.Loading
+            val result = dogsRepository.updateReportStatus(id, type, active)
+            result.fold(
+                onSuccess = {
+                    val newStatus = if (active) "active" else "inactive"
+                    _myReports.value = _myReports.value.map { report ->
+                        if (report.id == id) report.copy(status = newStatus) else report
+                    }
+                    // Sync myDogs if it's a lost dog
+                    if (type == ReportType.LOST) {
+                        _myDogs.value = _myDogs.value.map { dog ->
+                            if (dog.id == id) dog.copy(status = newStatus) else dog
+                        }
+                    }
+                    _reportActionState.value = UiState.Success(Unit)
+                },
+                onFailure = {
+                    _reportActionState.value = UiState.Error(it.message ?: "Error al actualizar el reporte")
+                }
+            )
+        }
+    }
+
+    fun resetReportActionState() { _reportActionState.value = UiState.Idle }
 
     fun loadMatchesForDog(dogId: String) {
         viewModelScope.launch {

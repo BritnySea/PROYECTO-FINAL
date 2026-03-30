@@ -145,6 +145,41 @@ def get_matches_for_dog(dog_id: str, top_k: int = 5) -> list[dict]:
     return results[:top_k]
 
 
+def get_my_found_reports(uid: str) -> list[dict]:
+    if _db is None:
+        raise RuntimeError("Firebase no inicializado.")
+
+    docs = (
+        _db.collection("found_dog_reports")
+        .where("found_by_uid", "==", uid)
+        .stream()
+    )
+
+    results = []
+    for doc in docs:
+        data = doc.to_dict()
+        created_at = data.get("created_at")
+        created_at_str = created_at.strftime("%Y-%m-%dT%H:%M:%S") if created_at else ""
+        results.append({
+            "report_id": doc.id,
+            "photo_url": data.get("found_dog_photo_url", ""),
+            "status": data.get("status", "active"),
+            "created_at": created_at_str,
+            "size": data.get("size", ""),
+            "color": data.get("color", ""),
+            "sex": data.get("sex", ""),
+            "description": data.get("description", ""),
+        })
+    return results
+
+
+def update_found_report_status(report_id: str, active: bool) -> None:
+    if _db is None:
+        raise RuntimeError("Firebase no inicializado.")
+    status = "active" if active else "inactive"
+    _db.collection("found_dog_reports").document(report_id).update({"status": status})
+
+
 def save_found_report(report_data: dict) -> str:
     if _db is None:
         raise RuntimeError("Firebase no inicializado. Llama initialize_firebase() primero.")

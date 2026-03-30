@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel Administrativo — Refugio WOOF</title>
+  <link rel="icon" type="image/png" href="img/logo_refugio.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <div class="login-wrapper">
+
+    <!-- ══════════════ PANEL IZQUIERDO ══════════════ -->
+    <div class="left-panel">
+
+      <!-- Logo circular -->
+      <div class="logo-circle">
+        <img src="img/logo_refugio.png" alt="Refugio WOOF" />
+      </div>
+
+      <!-- Título -->
+      <p class="left-subtitle">Panel Administrativo</p>
+      <h1 class="left-title">Refugio WOOF</h1>
+
+      <!-- Línea dorada -->
+      <div class="left-divider"></div>
+
+      <!-- Icono de acceso restringido -->
+      <div class="restricted-icon">
+        <svg width="58" height="58" viewBox="0 0 24 24" fill="none">
+          <rect x="5" y="11" width="14" height="10" rx="2"
+            fill="rgba(212,175,55,0.12)" stroke="#D4AF37" stroke-width="1.5"/>
+          <path d="M8 11V7a4 4 0 0 1 8 0v4"
+            stroke="#D4AF37" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="12" cy="16" r="1.5" fill="#D4AF37"/>
+          <line x1="12" y1="17.5" x2="12" y2="19.5"
+            stroke="#D4AF37" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+      <p class="restricted-label">Acceso Restringido</p>
+      <p class="restricted-sub">Solo Administradores</p>
+
+    </div>
+
+    <!-- ══════════════ PANEL DERECHO ══════════════ -->
+    <div class="right-panel">
+      <div class="form-container">
+
+        <h2 class="form-heading">Iniciar sesión</h2>
+        <p class="form-subheading">Accede con tu cuenta de administrador/a</p>
+
+        <div class="form-card">
+
+          <!-- Campo correo -->
+          <div class="field-header">
+            <span class="field-label">Correo Electrónico</span>
+          </div>
+          <div class="input-wrapper" id="email-wrapper">
+            <span class="input-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <rect x="2" y="4" width="20" height="16" rx="2"/>
+                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+              </svg>
+            </span>
+            <input
+              type="email"
+              id="email"
+              placeholder="admin@refugiowoof.com"
+              autocomplete="email"
+            />
+          </div>
+          <p class="field-error" id="email-error"></p>
+
+          <div class="field-spacer"></div>
+
+          <!-- Campo contraseña -->
+          <div class="field-header">
+            <span class="field-label">Contraseña</span>
+            <button class="forgot-link" id="forgot-btn" type="button">
+              ¿Olvidaste?
+            </button>
+          </div>
+          <div class="input-wrapper" id="password-wrapper">
+            <span class="input-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <rect x="3" y="11" width="18" height="11" rx="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </span>
+            <input
+              type="password"
+              id="password"
+              placeholder="••••••••"
+              autocomplete="current-password"
+            />
+            <button class="toggle-password" id="toggle-password" type="button" title="Mostrar/ocultar contraseña">
+              <!-- Icono ojo cerrado por defecto -->
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Botón iniciar sesión -->
+          <button class="btn-login" id="btn-login" type="button">
+            Iniciar Sesión
+          </button>
+
+        </div><!-- /form-card -->
+      </div><!-- /form-container -->
+    </div><!-- /right-panel -->
+
+  </div><!-- /login-wrapper -->
+
+
+  <!-- ══════════════ TOAST DE NOTIFICACIÓN ══════════════ -->
+  <div class="toast hidden" id="toast"></div>
+
+
+  <!-- ══════════════ MODAL RECUPERAR CONTRASEÑA ══════════════ -->
+  <div class="modal-overlay hidden" id="reset-modal">
+    <div class="modal-box">
+
+      <h3 class="modal-title">Recuperar contraseña</h3>
+      <p class="modal-desc">
+        Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.
+      </p>
+
+      <!-- Input email del modal -->
+      <div class="input-wrapper" id="reset-email-wrapper">
+        <span class="input-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <rect x="2" y="4" width="20" height="16" rx="2"/>
+            <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+          </svg>
+        </span>
+        <input
+          type="email"
+          id="reset-email"
+          placeholder="ejemplo@correo.com"
+          autocomplete="email"
+        />
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" id="btn-cancel" type="button">Cancelar</button>
+        <button class="btn-send"   id="btn-send"   type="button">Enviar</button>
+      </div>
+
+    </div>
+  </div>
+
+
+  <script type="module" src="js/login.js"></script>
+</body>
+</html>

@@ -3,10 +3,14 @@ package com.univalle.proyectov1.feature.dogs.domain.repository
 import com.univalle.proyectov1.feature.dogs.domain.model.Dog
 import com.univalle.proyectov1.feature.dogs.domain.model.DogMatch
 import com.univalle.proyectov1.feature.dogs.domain.model.FoundDogMatchForOwner
+import com.univalle.proyectov1.feature.dogs.domain.model.MyReport
+import com.univalle.proyectov1.feature.dogs.domain.model.ReportType
 import java.io.File
 
 interface DogsRepository {
     suspend fun validatePhoto(photo: File): Result<String>
+    suspend fun validateLostPhoto(photo: File): Result<String>
+    suspend fun validateFoundPhoto(photo: File): Result<String>
 
     suspend fun registerLostDog(
         dogName: String,
@@ -34,6 +38,12 @@ interface DogsRepository {
     ): Result<List<DogMatch>>
 
     suspend fun getMyLostDogs(): List<Dog>
+
+    suspend fun getMyReports(): List<MyReport>
+
+    suspend fun updateReportStatus(id: String, type: ReportType, active: Boolean): Result<Unit>
+
+    suspend fun deactivateDog(dogId: String): Result<Unit>
 
     suspend fun getMatchesForDog(dogId: String): Result<List<FoundDogMatchForOwner>>
 }
