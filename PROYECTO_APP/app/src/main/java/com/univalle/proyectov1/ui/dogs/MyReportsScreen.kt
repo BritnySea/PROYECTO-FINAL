@@ -25,6 +25,7 @@ import coil.compose.AsyncImage
 import com.univalle.proyectov1.core.result.UiState
 import com.univalle.proyectov1.feature.dogs.domain.model.MyReport
 import com.univalle.proyectov1.feature.dogs.domain.model.ReportType
+import com.univalle.proyectov1.ui.components.WoofLoadingOverlay
 import com.univalle.proyectov1.ui.theme.*
 
 @Composable
@@ -190,6 +191,10 @@ fun MyReportsScreen(
             contentColor = TextOnGold
         ) {
             Icon(imageVector = Icons.Default.Add, contentDescription = "Agregar reporte")
+        }
+
+        if (reportActionState is UiState.Loading) {
+            WoofLoadingOverlay(message = "Actualizando reporte...")
         }
     }
 }

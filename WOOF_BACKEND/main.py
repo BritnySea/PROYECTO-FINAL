@@ -9,11 +9,9 @@ from app.routes import health, dogs
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
     firebase_service.initialize_firebase()
     model_service.load_model()
     yield
-    # Shutdown (nothing to clean up)
 
 
 app = FastAPI(
@@ -25,7 +23,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Restringir en producción
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

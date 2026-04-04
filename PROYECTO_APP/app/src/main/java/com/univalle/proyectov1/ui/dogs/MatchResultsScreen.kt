@@ -32,6 +32,7 @@ fun MatchResultsScreen(
     viewModel: DogsViewModel
 ) {
     val myDogs by viewModel.myDogs.collectAsState()
+    val myDogsLoading by viewModel.myDogsLoading.collectAsState()
     val ownerMatches by viewModel.ownerMatches.collectAsState()
     val ownerMatchesLoading by viewModel.ownerMatchesLoading.collectAsState()
 
@@ -69,7 +70,11 @@ fun MatchResultsScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            if (myDogs.isEmpty()) {
+            if (myDogsLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Gold)
+                }
+            } else if (myDogs.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
