@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 import numpy as np
 from typing import Annotated, Optional
@@ -23,7 +24,7 @@ async def validate_photo(
     photo: UploadFile = File(...),
 ):
     image_bytes = await photo.read()
-    dog_detected, confidence = model_service.is_dog(image_bytes)
+    dog_detected, confidence, _ = await asyncio.to_thread(model_service.analyze_image, image_bytes)
 
     if dog_detected:
         message = "Foto válida."
@@ -41,20 +42,28 @@ async def validate_found_photo(
     photo: UploadFile = File(...),
 ):
     image_bytes = await photo.read()
-    dog_detected, confidence = model_service.is_dog(image_bytes)
+
+    # Un solo forward pass: clasificación + embedding
+    dog_detected, confidence, embedding = await asyncio.to_thread(model_service.analyze_image, image_bytes)
 
     if not dog_detected:
-        if confidence < 0.15:
-            message = "La imagen tiene muy baja calidad o está borrosa. Intenta con una foto más clara y bien iluminada."
-        else:
-            message = "La foto no muestra un perro. Por favor seleccione otra foto."
+        message = (
+            "La imagen tiene muy baja calidad o está borrosa. Intenta con una foto más clara y bien iluminada."
+            if confidence < 0.15
+            else "La foto no muestra un perro. Por favor seleccione otra foto."
+        )
         return ValidatePhotoResponse(is_dog=False, confidence=round(confidence, 4), message=message)
 
-    embedding = model_service.get_embedding(image_bytes)
     emb_arr = np.array(embedding).reshape(1, -1)
-
     current_uid = current_user.get("uid")
-    lost_dogs = firebase_service.get_active_lost_dogs()
+
+    # Consultar perros perdidos y reportes encontrados en paralelo
+    lost_dogs, found_reports = await asyncio.gather(
+        asyncio.to_thread(firebase_service.get_active_lost_dogs),
+        asyncio.to_thread(firebase_service.get_active_found_reports),
+    )
+
+    # Verificar que el usuario no reporte su propio perro perdido como encontrado
     for dog in lost_dogs:
         if dog.get("registered_by_uid") != current_uid:
             continue
@@ -68,6 +77,20 @@ async def validate_found_photo(
                 detail="Esta foto corresponde a un perro que tú mismo reportaste como perdido. No puedes reportarlo como encontrado.",
             )
 
+    # Verificar que este perro encontrado no haya sido reportado ya por alguien
+    print(f"[validate_found_photo] revisando {len(found_reports)} reportes encontrados con embedding")
+    for report in found_reports:
+        stored_emb = report.get("embedding")
+        if not stored_emb:
+            continue
+        sim = float(cosine_similarity(emb_arr, np.array(stored_emb).reshape(1, -1))[0][0]) * 100
+        print(f"[validate_found_photo] similitud con reporte {report.get('doc_id')}: {sim:.1f}%")
+        if sim >= DUPLICATE_THRESHOLD:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Este perro ya fue reportado como encontrado anteriormente. Evita registrarlo dos veces.",
+            )
+
     return ValidatePhotoResponse(is_dog=True, confidence=round(confidence, 4), message="Foto válida.")
 
 
@@ -77,19 +100,21 @@ async def validate_lost_photo(
     photo: UploadFile = File(...),
 ):
     image_bytes = await photo.read()
-    dog_detected, confidence = model_service.is_dog(image_bytes)
+
+    # Un solo forward pass: clasificación + embedding
+    dog_detected, confidence, embedding = await asyncio.to_thread(model_service.analyze_image, image_bytes)
 
     if not dog_detected:
-        if confidence < 0.15:
-            message = "La imagen tiene muy baja calidad o está borrosa. Intenta con una foto más clara y bien iluminada."
-        else:
-            message = "La foto no muestra un perro. Por favor seleccione otra foto."
+        message = (
+            "La imagen tiene muy baja calidad o está borrosa. Intenta con una foto más clara y bien iluminada."
+            if confidence < 0.15
+            else "La foto no muestra un perro. Por favor seleccione otra foto."
+        )
         return ValidatePhotoResponse(is_dog=False, confidence=round(confidence, 4), message=message)
 
-    embedding = model_service.get_embedding(image_bytes)
     emb_arr = np.array(embedding).reshape(1, -1)
+    existing_lost_dogs = await asyncio.to_thread(firebase_service.get_active_lost_dogs)
 
-    existing_lost_dogs = firebase_service.get_active_lost_dogs()
     for existing_dog in existing_lost_dogs:
         stored_emb = existing_dog.get("embedding")
         if not stored_emb:
@@ -117,21 +142,21 @@ async def register_lost_dog(
     color: Optional[str] = Form(None),
     breed: Optional[str] = Form(None),
     lost_location: Optional[str] = Form(None),
+    sex: Optional[str] = Form(None),
 ):
     image_bytes = await photo.read()
 
-    dog_detected, confidence = model_service.is_dog(image_bytes)
+    # Un solo forward pass: clasificación + embedding
+    dog_detected, confidence, embedding = await asyncio.to_thread(model_service.analyze_image, image_bytes)
     if not dog_detected:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"La foto no muestra un perro (confianza: {confidence:.2%}).",
         )
 
-    embedding = model_service.get_embedding(image_bytes)
-
     # Validacion 1: evitar registrar el mismo perro perdido dos veces (cualquier usuario)
     emb_new_arr = np.array(embedding).reshape(1, -1)
-    existing_lost_dogs = firebase_service.get_active_lost_dogs()
+    existing_lost_dogs = await asyncio.to_thread(firebase_service.get_active_lost_dogs)
     for existing_dog in existing_lost_dogs:
         stored_emb = existing_dog.get("embedding")
         if not stored_emb:
@@ -159,6 +184,7 @@ async def register_lost_dog(
         "color": color,
         "breed": breed,
         "lost_location": lost_location,
+        "sex": sex or "",
     }
 
     dog_id = firebase_service.save_lost_dog(dog_data)
@@ -183,23 +209,39 @@ async def match_found_dog(
 ):
     image_bytes = await photo.read()
 
-    dog_detected, confidence = model_service.is_dog(image_bytes)
+    # Un solo forward pass: clasificación + embedding
+    dog_detected, confidence, embedding_found = await asyncio.to_thread(model_service.analyze_image, image_bytes)
     if not dog_detected:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"La foto no muestra un perro (confianza: {confidence:.2%}).",
         )
 
-    # Subir foto del perro encontrado a Cloudinary
-    found_filename = f"found_{uuid.uuid4().hex}.jpg"
-    found_photo_url = firebase_service.upload_photo(image_bytes, found_filename, folder="found_dog_photos")
-
-    embedding_found = model_service.get_embedding(image_bytes)
     emb_found_arr = np.array(embedding_found).reshape(1, -1)
-
-    # Validacion 2: evitar que el dueno reporte su propio perro como encontrado
     current_uid = current_user.get("uid")
-    lost_dogs = firebase_service.get_active_lost_dogs()
+
+    # Subir foto a Cloudinary y consultar Firestore en paralelo
+    found_filename = f"found_{uuid.uuid4().hex}.jpg"
+    found_photo_url, lost_dogs, found_reports = await asyncio.gather(
+        asyncio.to_thread(firebase_service.upload_photo, image_bytes, found_filename, "found_dog_photos"),
+        asyncio.to_thread(firebase_service.get_active_lost_dogs),
+        asyncio.to_thread(firebase_service.get_active_found_reports),
+    )
+
+    # Verificar que este perro encontrado no haya sido reportado ya por alguien
+    for report in found_reports:
+        stored_emb = report.get("embedding")
+        if not stored_emb:
+            continue
+        sim = float(cosine_similarity(emb_found_arr, np.array(stored_emb).reshape(1, -1))[0][0]) * 100
+        print(f"[match_found_dog] similitud con reporte encontrado existente: {sim:.1f}%")
+        if sim >= DUPLICATE_THRESHOLD:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Este perro ya fue reportado como encontrado anteriormente. Evita registrarlo dos veces.",
+            )
+
+    # Validacion: evitar que el dueno reporte su propio perro como encontrado
     for dog in lost_dogs:
         if dog.get("registered_by_uid") != current_uid:
             continue
@@ -255,6 +297,7 @@ async def match_found_dog(
     report_data = {
         "found_by_uid": current_user.get("uid"),
         "found_dog_photo_url": found_photo_url,
+        "embedding": embedding_found,
         "matched_dog_ids": [m.dog_id for m in matches],
         "matches": [
             {

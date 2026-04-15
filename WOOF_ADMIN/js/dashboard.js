@@ -1,39 +1,38 @@
 import { auth, db } from './firebase-config.js'
-import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js'
-import { doc, getDoc }                from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js'
+import {
+  onAuthStateChanged, signOut,
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js'
+import {
+  doc, getDoc,
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js'
 
-const logoutBtn   = document.getElementById('btn-logout')
-const adminName   = document.getElementById('admin-name')
+import { initNav, navigateTo } from './modules/nav.js'
+import { storeAdminState }     from './modules/admin-state.js'
 
-// ── Verificar sesión al cargar ────────────────────────────────────────────────
+// ── Auth guard ────────────────────────────────────────────────────────────────
 onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    // No hay sesión → volver al login
-    window.location.href = 'index.html'
-    return
-  }
-
+  if (!user) { window.location.href = 'index.html'; return }
   try {
     const snap = await getDoc(doc(db, 'users', user.uid))
-
     if (!snap.exists() || snap.data().role !== 'ADMIN') {
-      // Sesión válida pero no es admin → cerrar y redirigir
       await signOut(auth)
       window.location.href = 'index.html'
       return
     }
-
-    // Mostrar nombre del admin en el header
-    if (adminName) adminName.textContent = snap.data().name || user.email
-
+    const data = snap.data()
+    storeAdminState(user, data)
+    document.getElementById('admin-name').textContent = data.name || user.email
   } catch {
     await signOut(auth)
     window.location.href = 'index.html'
   }
 })
 
-// ── Cerrar sesión ─────────────────────────────────────────────────────────────
-logoutBtn.addEventListener('click', async () => {
+document.getElementById('btn-logout').addEventListener('click', async () => {
   await signOut(auth)
   window.location.href = 'index.html'
 })
+
+// ── Inicializar navegación y cargar sección inicial ───────────────────────────
+initNav()
+navigateTo('dashboard')

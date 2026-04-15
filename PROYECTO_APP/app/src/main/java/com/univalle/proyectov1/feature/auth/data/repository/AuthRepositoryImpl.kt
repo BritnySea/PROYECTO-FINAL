@@ -44,8 +44,14 @@ class AuthRepositoryImpl(
             val firebaseUser = auth.currentUser
             if (firebaseUser != null && firebaseUser.isEmailVerified) {
                 val uid = firebaseUser.uid
-                val userExists = db.collection("users").document(uid).get().await().exists()
-                if (!userExists) {
+                val userDoc = db.collection("users").document(uid).get().await()
+
+                if (userDoc.exists() && userDoc.getBoolean("isBlocked") == true) {
+                    auth.signOut()
+                    return Result.failure(Exception("CUENTA_BLOQUEADA"))
+                }
+
+                if (!userDoc.exists()) {
                     val newUser = User(
                         uid = uid,
                         name = firebaseUser.displayName ?: "Usuario",
@@ -70,13 +76,14 @@ class AuthRepositoryImpl(
 
             // Si es la primera vez que entra con Google, lo guardamos en la base de datos
             val uid = result.user?.uid ?: throw Exception("Error al obtener UID de Google")
-            val userExists = db.collection("users").document(uid).get().await().exists()
+            val userDoc = db.collection("users").document(uid).get().await()
 
-            if (!userExists) {
+            if (userDoc.exists() && userDoc.getBoolean("isBlocked") == true) {
+                auth.signOut()
+                return Result.failure(Exception("CUENTA_BLOQUEADA"))
+            }
 
-
-
-                
+            if (!userDoc.exists()) {
                 val newUser = User(
                     uid = uid,
                     name = result.user?.displayName ?: "Usuario de Google",

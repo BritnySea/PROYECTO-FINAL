@@ -107,13 +107,9 @@ class DogsRepositoryImpl @Inject constructor(
                 size = size.toRequestBody("text/plain".toMediaTypeOrNull()),
                 color = color.toRequestBody("text/plain".toMediaTypeOrNull()),
                 breed = breed.toRequestBody("text/plain".toMediaTypeOrNull()),
-                lostLocation = lostLocation.toRequestBody("text/plain".toMediaTypeOrNull())
+                lostLocation = lostLocation.toRequestBody("text/plain".toMediaTypeOrNull()),
+                sex = sex.toRequestBody("text/plain".toMediaTypeOrNull())
             )
-            // Guardar sex directamente en Firestore ya que el campo no está en la API
-            if (sex.isNotBlank()) {
-                db.collection("lost_dogs").document(response.dogId)
-                    .update("sex", sex).await()
-            }
             Result.success(response.dogId)
         } catch (e: HttpException) {
             val detail = parseErrorDetail(e)

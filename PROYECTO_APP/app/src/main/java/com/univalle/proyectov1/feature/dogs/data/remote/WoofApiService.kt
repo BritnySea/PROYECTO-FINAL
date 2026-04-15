@@ -110,7 +110,8 @@ interface WoofApiService {
         @Part("size") size: RequestBody,
         @Part("color") color: RequestBody,
         @Part("breed") breed: RequestBody,
-        @Part("lost_location") lostLocation: RequestBody
+        @Part("lost_location") lostLocation: RequestBody,
+        @Part("sex") sex: RequestBody
     ): RegisterLostDogResponse
 
     @Multipart

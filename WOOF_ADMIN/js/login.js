@@ -38,7 +38,8 @@ function showToast(message, isError = true) {
   clearTimeout(toastTimer)
   toast.textContent = message
   toast.className = 'toast ' + (isError ? 'error' : 'success')
-  toastTimer = setTimeout(() => { toast.className = 'toast hidden' }, 5000)
+  toastTimer = setTimeout(() => { toast.className = 'toast hidden' }, 3500)
+  toast.onclick = () => { clearTimeout(toastTimer); toast.className = 'toast hidden' }
 }
 
 function setLoading(active) {
@@ -77,27 +78,40 @@ function iconEyeOff() {
 }
 
 // ── Validación de email en tiempo real ──────────────────────────────────────
-let emailTouched = false
+let emailErrorTimer = null
 
-emailInput.addEventListener('blur', () => {
-  emailTouched = true
-  validateEmail()
-})
-
-emailInput.addEventListener('input', () => {
-  if (emailTouched) validateEmail()
-})
-
-function validateEmail() {
-  const val = emailInput.value.trim()
-  if (val && !isValidEmail(val)) {
+function setEmailError(msg) {
+  clearTimeout(emailErrorTimer)
+  if (msg) {
     emailWrapper.classList.add('error')
-    emailError.textContent = 'Formato de correo no válido'
+    emailError.textContent = msg
+    emailErrorTimer = setTimeout(() => {
+      emailWrapper.classList.remove('error')
+      emailError.textContent = ''
+    }, 5000)
   } else {
     emailWrapper.classList.remove('error')
     emailError.textContent = ''
   }
 }
+
+emailInput.addEventListener('input', () => {
+  const val = emailInput.value.trim()
+  if (val && !isValidEmail(val)) {
+    setEmailError('Formato de correo no válido')
+  } else {
+    setEmailError('')
+  }
+})
+
+emailInput.addEventListener('blur', () => {
+  const val = emailInput.value.trim()
+  if (val && !isValidEmail(val)) {
+    setEmailError('Formato de correo no válido')
+  } else {
+    setEmailError('')
+  }
+})
 
 // ── Login ────────────────────────────────────────────────────────────────────
 loginBtn.addEventListener('click', handleLogin)
@@ -212,7 +226,12 @@ async function handleResetPassword() {
 
 // ── Si ya hay sesión activa de admin → ir directo al dashboard ───────────────
 onAuthStateChanged(auth, async (user) => {
-  if (!user) return
+  if (!user) {
+    // Limpiar campos al cargar (evita que el browser muestre datos guardados)
+    emailInput.value    = ''
+    passwordInput.value = ''
+    return
+  }
   try {
     const snap = await getDoc(doc(db, 'users', user.uid))
     if (snap.exists() && snap.data().role === 'ADMIN') {

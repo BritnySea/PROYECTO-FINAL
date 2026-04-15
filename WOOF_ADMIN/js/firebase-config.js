@@ -12,12 +12,12 @@ import { getAuth }        from 'https://www.gstatic.com/firebasejs/10.12.0/fireb
 import { getFirestore }   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js'
 
 const firebaseConfig = {
-  apiKey:            "TU_API_KEY",
+  apiKey:            "AIzaSyBPB4oF3u2P5EXdH3JE9iDmA3563jjpYNo",
   authDomain:        "proyectov1-15.firebaseapp.com",
   projectId:         "proyectov1-15",
-  storageBucket:     "proyectov1-15.appspot.com",
-  messagingSenderId: "TU_MESSAGING_SENDER_ID",
-  appId:             "TU_APP_ID",
+  storageBucket:     "proyectov1-15.firebasestorage.app",
+  messagingSenderId: "939257384265",
+  appId:             "1:939257384265:web:e4ae9b913fbaf474101e98",
 }
 
 const app = initializeApp(firebaseConfig)

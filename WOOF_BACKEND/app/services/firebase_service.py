@@ -53,19 +53,43 @@ def save_lost_dog(dog_data: dict) -> str:
     return doc_ref.id
 
 
+def get_active_found_reports() -> list[dict]:
+    """Devuelve reportes de perros encontrados activos que tengan embedding guardado.
+    Documentos sin campo 'status' se consideran activos (reportes anteriores a la migración).
+    """
+    if _db is None:
+        raise RuntimeError("Firebase no inicializado. Llama initialize_firebase() primero.")
+
+    docs = _db.collection("found_dog_reports").stream()
+
+    results = []
+    total = 0
+    for doc in docs:
+        total += 1
+        data = doc.to_dict()
+        # Sin campo status → reporte antiguo → se trata como activo
+        if data.get("status", "active") != "active":
+            continue
+        if data.get("embedding"):
+            data["doc_id"] = doc.id
+            results.append(data)
+
+    print(f"[firebase_service] get_active_found_reports: {total} total, {len(results)} con embedding activos")
+    return results
+
+
 def get_active_lost_dogs() -> list[dict]:
     if _db is None:
         raise RuntimeError("Firebase no inicializado. Llama initialize_firebase() primero.")
 
-    docs = (
-        _db.collection("lost_dogs")
-        .where("status", "==", "active")
-        .stream()
-    )
+    docs = _db.collection("lost_dogs").stream()
 
     results = []
     for doc in docs:
         data = doc.to_dict()
+        # Sin campo status → reporte antiguo → se trata como activo
+        if data.get("status", "active") != "active":
+            continue
         data["doc_id"] = doc.id
         results.append(data)
 
@@ -186,5 +210,6 @@ def save_found_report(report_data: dict) -> str:
 
     doc_ref = _db.collection("found_dog_reports").document()
     report_data["created_at"] = datetime.now(timezone.utc)
+    report_data["status"] = "active"
     doc_ref.set(report_data)
     return doc_ref.id

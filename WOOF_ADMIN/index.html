@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Panel Administrativo — Refugio WOOF</title>
   <link rel="icon" type="image/png" href="img/logo_refugio.png" />
-  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/login.css" />
 </head>
 <body>
 
@@ -108,32 +109,22 @@
             </button>
           </div>
 
-          <!-- Botón iniciar sesión -->
           <button class="btn-login" id="btn-login" type="button">
             Iniciar Sesión
           </button>
 
-        </div><!-- /form-card -->
-      </div><!-- /form-container -->
-    </div><!-- /right-panel -->
-
-  </div><!-- /login-wrapper -->
-
-
-  <!-- ══════════════ TOAST DE NOTIFICACIÓN ══════════════ -->
+        </div>
+      </div>
+    </div>
+  </div>
   <div class="toast hidden" id="toast"></div>
 
-
-  <!-- ══════════════ MODAL RECUPERAR CONTRASEÑA ══════════════ -->
   <div class="modal-overlay hidden" id="reset-modal">
     <div class="modal-box">
-
       <h3 class="modal-title">Recuperar contraseña</h3>
       <p class="modal-desc">
         Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.
       </p>
-
-      <!-- Input email del modal -->
       <div class="input-wrapper" id="reset-email-wrapper">
         <span class="input-icon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -154,10 +145,8 @@
         <button class="btn-cancel" id="btn-cancel" type="button">Cancelar</button>
         <button class="btn-send"   id="btn-send"   type="button">Enviar</button>
       </div>
-
     </div>
   </div>
-
 
   <script type="module" src="js/login.js"></script>
 </body>

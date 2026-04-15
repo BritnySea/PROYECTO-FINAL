@@ -7,8 +7,9 @@ from tensorflow.keras.applications.efficientnet import preprocess_input
 from app.config import get_settings
 
 # Singleton references
-_full_model = None
+_full_model      = None
 _embedding_model = None
+_combined_model  = None   # outputs clasificación + embedding en un solo forward pass
 
 NOT_A_DOG_INDEX = 83
 CONFIDENCE_THRESHOLD = 0.20
@@ -16,17 +17,24 @@ IMAGE_SIZE = (380, 380)
 
 
 def load_model() -> None:
-    global _full_model, _embedding_model
+    global _full_model, _embedding_model, _combined_model
 
     settings = get_settings()
     model_path = settings.model_path
 
     _full_model = tf.keras.models.load_model(model_path)
 
-    # Embedding model: outputs from the penultimate layer (before the final Dense)
+    # Embedding model: salida de la penúltima capa (antes del Dense final)
     _embedding_model = tf.keras.Model(
         inputs=_full_model.input,
         outputs=_full_model.layers[-2].output,
+    )
+
+    # Modelo combinado: devuelve clasificación Y embedding en un solo predict()
+    # Evita hacer dos forward passes separados sobre la misma imagen
+    _combined_model = tf.keras.Model(
+        inputs=_full_model.input,
+        outputs=[_full_model.output, _full_model.layers[-2].output],
     )
 
     print(f"[model_service] Model loaded from '{model_path}'")
@@ -100,3 +108,30 @@ def get_embedding(image_bytes: bytes) -> list[float]:
     preprocessed = _preprocess_image(image_bytes)
     embedding = _embedding_model.predict(preprocessed, verbose=0)
     return embedding[0].tolist()
+
+
+def analyze_image(image_bytes: bytes) -> tuple[bool, float, list[float]]:
+    """
+    Preprocesa la imagen UNA sola vez y la pasa a ambos modelos,
+    evitando procesar los bytes dos veces.
+
+    Returns:
+        dog_detected (bool), confidence (float), embedding (list[float])
+    """
+    if _full_model is None or _embedding_model is None:
+        raise RuntimeError("Model is not loaded. Call load_model() first.")
+
+    # Preprocesamiento costoso (resize LANCZOS + enhance) — solo una vez
+    preprocessed = _preprocess_image(image_bytes)
+
+    # Clasificación
+    predictions  = _full_model.predict(preprocessed, verbose=0)
+    probs        = predictions[0]
+    max_class    = int(np.argmax(probs))
+    confidence   = float(probs[max_class])
+    dog_detected = (max_class != NOT_A_DOG_INDEX) and (confidence >= CONFIDENCE_THRESHOLD)
+
+    # Embedding (reutiliza el mismo tensor ya preprocesado)
+    embedding = _embedding_model.predict(preprocessed, verbose=0)
+
+    return dog_detected, confidence, embedding[0].tolist()
