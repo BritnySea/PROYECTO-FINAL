@@ -40,6 +40,8 @@ fun MyReportsScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     // null = ningún diálogo, true = deactivate, false = reactivate
     var actionReport by remember { mutableStateOf<Pair<MyReport, Boolean>?>(null) }
+    var selectedReason by remember { mutableStateOf("") }
+    var otherText by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         viewModel.loadMyReports()
@@ -51,39 +53,110 @@ fun MyReportsScreen(
         }
     }
 
+    LaunchedEffect(actionReport) {
+        selectedReason = ""
+        otherText = ""
+    }
+
     val activeReports = myReports.filter { it.status == "active" }
     val inactiveReports = myReports.filter { it.status != "active" }
     val displayedReports = if (selectedTab == 0) activeReports else inactiveReports
 
-    // Diálogo de desactivar
+    // Diálogo de desactivar/reactivar con selección de razón
     actionReport?.let { (report, isDeactivating) ->
+        val reasons = when {
+            isDeactivating && report.type == ReportType.LOST ->
+                listOf("Ya encontré a mi perro", "Publicación duplicada", "Información incorrecta", "Otro")
+            isDeactivating ->
+                listOf("El perro ya fue entregado a su dueño", "Publicación duplicada", "Información incorrecta", "Otro")
+            else ->
+                listOf("Error al desactivarlo", "Quiero que siga visible", "Otro")
+        }
+        val isConfirmEnabled = selectedReason.isNotEmpty() &&
+            (selectedReason != "Otro" || otherText.isNotBlank())
+
         AlertDialog(
             onDismissRequest = { actionReport = null },
             containerColor = DarkSurface,
             title = {
                 Text(
-                    text = if (isDeactivating) "¿Desactivar reporte?" else "¿Reactivar reporte?",
+                    text = if (isDeactivating) "¿Por qué desactivas esta publicación?"
+                           else "¿Por qué reactivas esta publicación?",
                     color = Color.White,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
                 )
             },
             text = {
-                Text(
-                    text = if (isDeactivating)
-                        "Este reporte ya no se mostrará a otros usuarios. ¿Deseas continuar?"
-                    else
-                        "El reporte volverá a ser visible para otros usuarios. ¿Deseas continuar?",
-                    color = Color.White.copy(alpha = 0.8f)
-                )
+                Column {
+                    Text(
+                        text = if (isDeactivating)
+                            "La publicación dejará de ser visible para otros usuarios."
+                        else
+                            "La publicación volverá a ser visible para otros usuarios.",
+                        color = Color.White.copy(alpha = 0.6f),
+                        fontSize = 13.sp
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    reasons.forEach { reason ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selectedReason = reason }
+                                .padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedReason == reason,
+                                onClick = { selectedReason = reason },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = Gold,
+                                    unselectedColor = Color.White.copy(alpha = 0.5f)
+                                )
+                            )
+                            Text(
+                                text = reason,
+                                color = Color.White.copy(alpha = 0.9f),
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(start = 4.dp)
+                            )
+                        }
+                    }
+                    if (selectedReason == "Otro") {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = otherText,
+                            onValueChange = { if (it.length <= 300) otherText = it },
+                            placeholder = {
+                                Text("Describe el motivo...", color = Color.White.copy(alpha = 0.4f))
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = Gold,
+                                unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                                cursorColor = Gold
+                            ),
+                            maxLines = 3
+                        )
+                    }
+                }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    viewModel.updateReportStatus(report.id, report.type, active = !isDeactivating)
-                    actionReport = null
-                }) {
+                TextButton(
+                    onClick = {
+                        val finalReason = if (selectedReason == "Otro") otherText.trim() else selectedReason
+                        viewModel.updateReportStatus(report.id, report.type, active = !isDeactivating, reason = finalReason)
+                        actionReport = null
+                    },
+                    enabled = isConfirmEnabled
+                ) {
                     Text(
                         text = if (isDeactivating) "Sí, desactivar" else "Sí, reactivar",
-                        color = if (isDeactivating) Color(0xFFEF5350) else Color(0xFF4CAF50)
+                        color = if (isConfirmEnabled)
+                            if (isDeactivating) Color(0xFFEF5350) else Color(0xFF4CAF50)
+                        else Color.White.copy(alpha = 0.3f)
                     )
                 }
             },

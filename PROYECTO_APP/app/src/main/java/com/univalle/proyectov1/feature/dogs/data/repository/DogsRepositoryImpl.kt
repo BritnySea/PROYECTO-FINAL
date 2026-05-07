@@ -268,15 +268,24 @@ class DogsRepositoryImpl @Inject constructor(
         return lostReports + foundReports
     }
 
-    override suspend fun updateReportStatus(id: String, type: ReportType, active: Boolean): Result<Unit> {
+    override suspend fun updateReportStatus(id: String, type: ReportType, active: Boolean, reason: String?): Result<Unit> {
         return try {
             if (type == ReportType.LOST) {
                 val newStatus = if (active) "active" else "inactive"
-                db.collection("lost_dogs").document(id)
-                    .update("status", newStatus).await()
+                val updateData = mutableMapOf<String, Any>("status" to newStatus)
+                if (!active && !reason.isNullOrBlank()) {
+                    updateData["deactivation_reason"] = reason
+                }
+                db.collection("lost_dogs").document(id).update(updateData).await()
             } else {
                 val token = getBearerToken()
                 api.updateFoundReportStatus(token = token, reportId = id, active = active)
+                if (!active && !reason.isNullOrBlank()) {
+                    try {
+                        db.collection("found_dog_reports").document(id)
+                            .update("deactivation_reason", reason).await()
+                    } catch (_: Exception) {}
+                }
             }
             Result.success(Unit)
         } catch (e: Exception) {

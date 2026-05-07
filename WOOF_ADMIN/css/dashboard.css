@@ -480,6 +480,20 @@
 }
 .btn-refresh:hover { border-color: rgba(255,255,255,0.2); color: var(--white); }
 
+.btn-pdf {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(212,175,55,0.08);
+  border: 1px solid rgba(212,175,55,0.3);
+  border-radius: 10px;
+  color: var(--gold);
+  font-size: 12px;
+  padding: 7px 14px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-pdf:hover { background: rgba(212,175,55,0.15); border-color: rgba(212,175,55,0.6); }
+
 /* ── Match cards ── */
 .match-card {
   background: var(--card);
@@ -1218,3 +1232,203 @@
 }
 .reason-other-textarea:focus { border-color: var(--gold); }
 .reason-other-textarea::placeholder { color: var(--muted); }
+
+/* ════════════════════════════════
+   DASHBOARD — KPI CARDS
+   ════════════════════════════════ */
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.kpi-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: border-color 0.2s, transform 0.15s;
+}
+.kpi-card:hover {
+  border-color: rgba(255,255,255,0.14);
+  transform: translateY(-1px);
+}
+
+.kpi-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.kpi-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.kpi-label {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* ════════════════════════════════
+   DASHBOARD — BARRA DE ÉXITO
+   ════════════════════════════════ */
+
+.success-bar-card {
+  background: var(--card);
+  border: 1px solid rgba(212,175,55,0.2);
+  border-radius: 16px;
+  padding: 18px 22px;
+  margin-bottom: 18px;
+}
+
+.success-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  gap: 16px;
+}
+
+.success-bar-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--white);
+  margin-bottom: 4px;
+}
+
+.success-bar-desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.success-bar-pct {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--gold);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.success-bar-track {
+  height: 8px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.success-bar-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  transition: width 1.1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* ════════════════════════════════
+   DASHBOARD — GRÁFICOS
+   ════════════════════════════════ */
+
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.charts-row > .chart-card[style*="span 2"] {
+  grid-column: span 2;
+}
+
+.charts-row:has(> .chart-card:nth-child(3)) {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.chart-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px 22px;
+}
+
+.chart-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.chart-wrap {
+  height: 230px;
+  position: relative;
+}
+
+.chart-wrap--donut { height: 220px; }
+.chart-wrap--hbar  { height: 230px; }
+
+/* ════════════════════════════════
+   DASHBOARD — ACTIVIDAD RECIENTE
+   ════════════════════════════════ */
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.activity-item:last-child { border-bottom: none; }
+
+.activity-dot {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.activity-body { flex: 1; min-width: 0; }
+
+.activity-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--white);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activity-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activity-date {
+  font-size: 11px;
+  color: rgba(255,255,255,0.28);
+  flex-shrink: 0;
+  white-space: nowrap;
+}

@@ -41,7 +41,7 @@ interface DogsRepository {
 
     suspend fun getMyReports(): List<MyReport>
 
-    suspend fun updateReportStatus(id: String, type: ReportType, active: Boolean): Result<Unit>
+    suspend fun updateReportStatus(id: String, type: ReportType, active: Boolean, reason: String? = null): Result<Unit>
 
     suspend fun deactivateDog(dogId: String): Result<Unit>
 

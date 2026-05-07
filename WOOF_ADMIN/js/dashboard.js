@@ -10,6 +10,8 @@ import { initNav, navigateTo } from './modules/nav.js'
 import { storeAdminState }     from './modules/admin-state.js'
 
 // ── Auth guard ────────────────────────────────────────────────────────────────
+let _appReady = false
+
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = 'index.html'; return }
   try {
@@ -22,6 +24,12 @@ onAuthStateChanged(auth, async (user) => {
     const data = snap.data()
     storeAdminState(user, data)
     document.getElementById('admin-name').textContent = data.name || user.email
+
+    // Cargar sección inicial solo la primera vez que auth confirma al admin
+    if (!_appReady) {
+      _appReady = true
+      navigateTo('dashboard')
+    }
   } catch {
     await signOut(auth)
     window.location.href = 'index.html'
@@ -33,6 +41,5 @@ document.getElementById('btn-logout').addEventListener('click', async () => {
   window.location.href = 'index.html'
 })
 
-// ── Inicializar navegación y cargar sección inicial ───────────────────────────
+// ── Inicializar navegación (solo listeners, sin cargar datos aún) ─────────────
 initNav()
-navigateTo('dashboard')

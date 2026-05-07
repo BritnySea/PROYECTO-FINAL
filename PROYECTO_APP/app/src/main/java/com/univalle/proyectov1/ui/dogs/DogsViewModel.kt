@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.FirebaseAuth
 import com.univalle.proyectov1.core.result.UiState
 import com.univalle.proyectov1.feature.dogs.domain.model.Dog
 import com.univalle.proyectov1.feature.dogs.domain.model.DogMatch
@@ -35,8 +36,40 @@ sealed class PhotoValidationState {
 @HiltViewModel
 class DogsViewModel @Inject constructor(
     private val dogsRepository: DogsRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val auth: FirebaseAuth
 ) : ViewModel() {
+
+    private var _currentUid: String? = auth.currentUser?.uid
+    private val _authListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+        val newUid = firebaseAuth.currentUser?.uid
+        if (newUid != _currentUid) {
+            _currentUid = newUid
+            clearAllState()
+        }
+    }
+
+    init {
+        auth.addAuthStateListener(_authListener)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        auth.removeAuthStateListener(_authListener)
+    }
+
+    fun clearAllState() {
+        resetLostDogForm()
+        resetFoundDogForm()
+        _registerState.value = UiState.Idle
+        _matchState.value = UiState.Idle
+        _matchResults.value = emptyList()
+        _myDogs.value = emptyList()
+        _myReports.value = emptyList()
+        _ownerMatches.value = emptyList()
+        _deactivateState.value = UiState.Idle
+        _reportActionState.value = UiState.Idle
+    }
 
     // ─── Register Lost Dog ────────────────────────────────────────────────────
     private val _registerState = MutableStateFlow<UiState<Unit>>(UiState.Idle)
@@ -261,8 +294,9 @@ class DogsViewModel @Inject constructor(
                 )
                 result.fold(
                     onSuccess = { matches ->
-                        _matchResults.value = matches
-                        _matchState.value = UiState.Success(matches)
+                        val filtered = matches.filter { it.similarityPercent >= 50 }
+                        _matchResults.value = filtered
+                        _matchState.value = UiState.Success(filtered)
                     },
                     onFailure = {
                         foundPhotoValidationState = PhotoValidationState.Invalid(it.message ?: "Error al buscar coincidencias")
@@ -322,10 +356,10 @@ class DogsViewModel @Inject constructor(
         }
     }
 
-    fun updateReportStatus(id: String, type: ReportType, active: Boolean) {
+    fun updateReportStatus(id: String, type: ReportType, active: Boolean, reason: String? = null) {
         viewModelScope.launch {
             _reportActionState.value = UiState.Loading
-            val result = dogsRepository.updateReportStatus(id, type, active)
+            val result = dogsRepository.updateReportStatus(id, type, active, reason)
             result.fold(
                 onSuccess = {
                     val newStatus = if (active) "active" else "inactive"

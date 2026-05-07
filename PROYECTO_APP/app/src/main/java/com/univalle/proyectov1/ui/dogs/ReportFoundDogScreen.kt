@@ -52,6 +52,10 @@ fun ReportFoundDogScreen(
     var reporterPhone by remember { mutableStateOf("") }
     var reporterEmail by remember { mutableStateOf(user?.email ?: "") }
 
+    DisposableEffect(Unit) {
+        onDispose { viewModel.resetFoundDogForm() }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.resetMatchState()
         val phone = viewModel.getUserPhone()

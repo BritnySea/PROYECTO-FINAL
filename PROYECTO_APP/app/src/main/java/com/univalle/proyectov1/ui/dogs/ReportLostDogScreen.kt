@@ -53,6 +53,10 @@ fun ReportLostDogScreen(
     var ownerPhone by remember { mutableStateOf("") }
     var ownerEmail by remember { mutableStateOf(user?.email ?: "") }
 
+    DisposableEffect(Unit) {
+        onDispose { viewModel.resetLostDogForm() }
+    }
+
     // Auto-rellenar teléfono desde el perfil
     LaunchedEffect(Unit) {
         val phone = viewModel.getUserPhone()

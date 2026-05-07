@@ -119,27 +119,84 @@
 
       <!-- ══ SECCIÓN: DASHBOARD ══ -->
       <div id="section-dashboard" class="section-content">
-        <div class="section-header">
-          <h2 class="section-title">Dashboard</h2>
-          <p class="section-sub">Resumen general del refugio</p>
+
+        <div class="section-header" style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px">
+          <div>
+            <h2 class="section-title">Dashboard</h2>
+            <p class="section-sub">Resumen general del sistema WOOF</p>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn-pdf" id="btn-pdf-dashboard" type="button">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="12" y1="18" x2="12" y2="12"/>
+                <polyline points="9 15 12 18 15 15"/>
+              </svg>
+              Exportar PDF
+            </button>
+            <button class="btn-refresh" id="btn-refresh-dashboard" type="button">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+              Actualizar
+            </button>
+          </div>
         </div>
-        <div class="stat-grid">
-          <div class="stat-card">
-            <div class="stat-icon" style="background:rgba(212,175,55,0.1)">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+
+        <!-- ── KPI Cards ── -->
+        <div class="kpi-grid">
+
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:rgba(79,195,247,0.12)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="#4FC3F7" stroke-width="1.8" stroke-linecap="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <div>
+              <p class="kpi-value" id="kpi-users">—</p>
+              <p class="kpi-label">Usuarios registrados</p>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:rgba(239,83,80,0.12)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="#EF5350" stroke-width="1.8" stroke-linecap="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+              </svg>
+            </div>
+            <div>
+              <p class="kpi-value" id="kpi-blocked">—</p>
+              <p class="kpi-label">Usuarios bloqueados</p>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:rgba(212,175,55,0.12)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
                 stroke="#D4AF37" stroke-width="1.8" stroke-linecap="round">
                 <circle cx="11" cy="11" r="8"/>
                 <path d="m21 21-4.35-4.35"/>
               </svg>
             </div>
             <div>
-              <p class="stat-value" id="stat-lost">—</p>
-              <p class="stat-label">Perros perdidos</p>
+              <p class="kpi-value" id="kpi-lost-active">—</p>
+              <p class="kpi-label">Perros extraviados activos</p>
             </div>
           </div>
-          <div class="stat-card">
-            <div class="stat-icon" style="background:rgba(76,175,80,0.1)">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:rgba(76,175,80,0.12)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
                 stroke="#4CAF50" stroke-width="1.8" stroke-linecap="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                 <polyline points="14 2 14 8 20 8"/>
@@ -148,17 +205,91 @@
               </svg>
             </div>
             <div>
-              <p class="stat-value" id="stat-found">—</p>
-              <p class="stat-label">Reportes de encontrados</p>
+              <p class="kpi-value" id="kpi-found">—</p>
+              <p class="kpi-label">Reportes de encontrados</p>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:rgba(171,71,188,0.12)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="#AB47BC" stroke-width="1.8" stroke-linecap="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
+            </div>
+            <div>
+              <p class="kpi-value" id="kpi-matches">—</p>
+              <p class="kpi-label">Coincidencias IA ≥ 50%</p>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:rgba(38,198,218,0.12)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="#26C6DA" stroke-width="1.8" stroke-linecap="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+            </div>
+            <div>
+              <p class="kpi-value" id="kpi-resolved">—</p>
+              <p class="kpi-label">Casos resueltos</p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ── Fila 1: Actividad de reportes ── -->
+        <div class="charts-row">
+          <div class="chart-card" style="grid-column:span 2">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:14px">
+              <p class="chart-title" style="margin-bottom:0">Actividad de reportes</p>
+              <div style="display:flex; gap:6px; flex-wrap:wrap">
+                <button class="filter-tab activity-filter-tab" data-activity-filter="daily">Diario</button>
+                <button class="filter-tab activity-filter-tab" data-activity-filter="weekly">Semanal</button>
+                <button class="filter-tab activity-filter-tab active" data-activity-filter="monthly">Mensual</button>
+                <button class="filter-tab activity-filter-tab" data-activity-filter="range">Rango</button>
+              </div>
+            </div>
+            <div class="date-range-inputs hidden" id="activity-date-range-inputs" style="margin-bottom:12px">
+              <div class="date-range-group">
+                <label class="date-range-label">Desde</label>
+                <input type="date" id="activity-date-from" class="date-input" />
+              </div>
+              <div class="date-range-group">
+                <label class="date-range-label">Hasta</label>
+                <input type="date" id="activity-date-to" class="date-input" />
+              </div>
+              <button class="btn-apply-range" id="activity-btn-apply-range" type="button">Aplicar</button>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="chart-monthly"></canvas>
             </div>
           </div>
         </div>
-        <div class="section-header" style="margin-top:32px">
-          <h3 class="section-title" style="font-size:16px">Últimos perros registrados como perdidos</h3>
+
+        <!-- ── Fila 2: Donas ── -->
+        <div class="charts-row" style="margin-bottom:36px">
+          <div class="chart-card">
+            <p class="chart-title">Estado — perros extraviados</p>
+            <div class="chart-wrap chart-wrap--donut">
+              <canvas id="chart-status-lost"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <p class="chart-title">Estado — perros encontrados</p>
+            <div class="chart-wrap chart-wrap--donut">
+              <canvas id="chart-status-found"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <p class="chart-title">Usuarios activos vs bloqueados</p>
+            <div class="chart-wrap chart-wrap--donut">
+              <canvas id="chart-users-status"></canvas>
+            </div>
+          </div>
         </div>
-        <div id="dashboard-recent" class="dog-grid">
-          <p class="empty-state">Cargando...</p>
-        </div>
+
       </div>
 
       <!-- ══ SECCIÓN: MI PERFIL ══ -->
@@ -265,16 +396,28 @@
         <div class="section-header" style="display:flex; justify-content:space-between; align-items:flex-end">
           <div>
             <h2 class="section-title">Registro de perros extraviados</h2>
-            <p class="section-sub">Todos los perros registrados como perdidos</p>
+            <p class="section-sub">Todos los perros registrados como extraviados</p>
           </div>
-          <button class="btn-refresh" id="btn-refresh-lost" type="button">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <polyline points="23 4 23 10 17 10"/>
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-            </svg>
-            Actualizar
-          </button>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn-pdf" id="btn-pdf-lost" type="button">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="12" y1="18" x2="12" y2="12"/>
+                <polyline points="9 15 12 18 15 15"/>
+              </svg>
+              Exportar PDF
+            </button>
+            <button class="btn-refresh" id="btn-refresh-lost" type="button">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+              Actualizar
+            </button>
+          </div>
         </div>
         <div class="search-bar-wrap" style="margin-bottom:12px">
           <div class="input-wrapper" style="max-width:340px">
@@ -322,14 +465,26 @@
           <div>
             <h2 class="section-title">Registro de perros encontrados</h2>
           </div>
-          <button class="btn-refresh" id="btn-refresh-found" type="button">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <polyline points="23 4 23 10 17 10"/>
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-            </svg>
-            Actualizar
-          </button>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn-pdf" id="btn-pdf-found" type="button">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="12" y1="18" x2="12" y2="12"/>
+                <polyline points="9 15 12 18 15 15"/>
+              </svg>
+              Exportar PDF
+            </button>
+            <button class="btn-refresh" id="btn-refresh-found" type="button">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+              Actualizar
+            </button>
+          </div>
         </div>
         <div class="filter-row" style="margin-bottom:12px">
           <div class="input-wrapper" style="max-width:340px">
@@ -825,6 +980,9 @@
 
   <div class="toast hidden" id="toast"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <script type="module" src="js/dashboard.js"></script>
 </body>
 </html>

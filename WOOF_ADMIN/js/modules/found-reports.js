@@ -42,6 +42,9 @@ export function initFoundReports() {
 
   document.getElementById('btn-refresh-found').addEventListener('click', loadFoundReports)
 
+  // Botón exportar PDF
+  document.getElementById('btn-pdf-found').addEventListener('click', _generatePDF)
+
   // Filtro por estado
   document.querySelectorAll('#found-status-filter-bar .filter-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -289,7 +292,7 @@ function _buildFoundCard(id, data) {
     ? data.created_at.toDate().toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
     : '—'
 
-  const matchCount  = Array.isArray(data.matches) ? data.matches.length : 0
+  const matchCount  = Array.isArray(data.matches) ? data.matches.filter(m => (m.similarity_percent ?? 0) >= 50).length : 0
   const isActive    = _isActive(data)
   const statusClass = isActive ? 'tag-active' : 'tag-inactive'
   const statusLabel = isActive ? 'Activo' : 'Inactivo'
@@ -363,7 +366,8 @@ async function openFoundModal(data) {
   `).join('')
 
   const matchesContainer = document.getElementById('found-modal-matches')
-  const matches = Array.isArray(data.matches) ? data.matches : []
+  const allMatches = Array.isArray(data.matches) ? data.matches : []
+  const matches = allMatches.filter(m => (m.similarity_percent ?? 0) >= 50)
 
   if (matches.length === 0) {
     matchesContainer.innerHTML = '<p class="empty-state" style="font-size:13px">Sin coincidencias registradas</p>'
@@ -445,4 +449,128 @@ function _refreshModalStatusUI(isActive) {
   const btn = document.getElementById('btn-toggle-found-status')
   btn.textContent = isActive ? 'Desactivar publicación' : 'Activar publicación'
   btn.className   = isActive ? 'btn-toggle-status btn-deactivate' : 'btn-toggle-status btn-activate'
+}
+
+function _getFilteredReports() {
+  const now = new Date()
+  return allFoundReports.filter(d => {
+    if (foundSearchQuery) {
+      const haystack = [d.color || '', d.size || '', d.sex || ''].join(' ').toLowerCase()
+      if (!haystack.includes(foundSearchQuery)) return false
+    }
+    const active = _isActive(d)
+    if (foundStatusFilter === 'active'   && !active) return false
+    if (foundStatusFilter === 'inactive' && active)  return false
+    if (foundDateFilter === 'all') return true
+    const date = d.created_at?.toDate?.()
+    if (!date) return false
+    if (foundDateFilter === 'daily')   return date.toDateString() === now.toDateString()
+    if (foundDateFilter === 'weekly') { const w = new Date(now); w.setDate(w.getDate() - 7); return date >= w }
+    if (foundDateFilter === 'monthly') return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()
+    if (foundDateFilter === 'range') {
+      if (!foundRangeFrom && !foundRangeTo) return false
+      const from = foundRangeFrom ? new Date(foundRangeFrom + 'T00:00:00') : null
+      const to   = foundRangeTo   ? new Date(foundRangeTo   + 'T23:59:59') : null
+      if (from && date < from) return false
+      if (to   && date > to)   return false
+      return true
+    }
+    return true
+  })
+}
+
+function _filterSummary() {
+  const periodMap = { all: 'Todos', daily: 'Hoy', weekly: 'Última semana', monthly: 'Este mes', range: 'Rango personalizado' }
+  const statusMap = { all: 'Todos', active: 'Activos', inactive: 'Inactivos' }
+  let period = periodMap[foundDateFilter] || 'Todos'
+  if (foundDateFilter === 'range' && (foundRangeFrom || foundRangeTo)) period = `${foundRangeFrom || '—'} al ${foundRangeTo || '—'}`
+  return { period, status: statusMap[foundStatusFilter] || 'Todos', search: foundSearchQuery || '—' }
+}
+
+function _generatePDF() {
+  if (!window.jspdf) { alert('La libreria PDF no esta disponible. Verifica tu conexion.'); return }
+  const { jsPDF } = window.jspdf
+  const reports = _getFilteredReports()
+  const { period, status } = _filterSummary()
+
+  const DARK  = [26, 26, 26]
+  const GOLD  = [212, 175, 55]
+  const GRAY  = [110, 110, 110]
+  const LGRAY = [245, 245, 245]
+
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+  const pageW = doc.internal.pageSize.width
+  const pageH = doc.internal.pageSize.height
+  const now = new Date()
+  const dateStr = now.toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })
+
+  doc.setFillColor(...DARK)
+  doc.rect(0, 0, pageW, 22, 'F')
+  doc.setFillColor(...GOLD)
+  doc.rect(0, 22, pageW, 1.5, 'F')
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(15)
+  doc.setTextColor(...GOLD)
+  doc.text('Refugio WOOF', 14, 10)
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8.5)
+  doc.setTextColor(180, 180, 180)
+  doc.text('Panel Administrativo - Registro de Perros Encontrados', 14, 18)
+
+  doc.setFontSize(8)
+  doc.setTextColor(160, 160, 160)
+  doc.text(`Generado: ${dateStr}`, pageW - 14, 10, { align: 'right' })
+  doc.text(`${reports.length} registro(s)`, pageW - 14, 17, { align: 'right' })
+
+  let y = 32
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(80, 80, 80)
+  doc.text(`Periodo: ${period}   |   Estado: ${status}`, 14, y)
+  y += 7
+
+  const rows = reports.map(d => {
+    const matchCount = Array.isArray(d.matches) ? d.matches.filter(m => (m.similarity_percent ?? 0) >= 50).length : 0
+    return [
+      d.color || 'N/A',
+      d.size  || 'N/A',
+      d.sex   || 'N/A',
+      d.reporter_name  || 'N/A',
+      d.reporter_phone || 'N/A',
+      String(matchCount),
+      (!d.status || d.status === 'active' || d.status === 'activo') ? 'Activo' : 'Inactivo',
+      d.created_at?.toDate?.()
+        ? d.created_at.toDate().toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
+        : 'N/A',
+    ]
+  })
+
+  doc.autoTable({
+    startY: y,
+    head: [['Color', 'Tamano', 'Sexo', 'Reportado por', 'Telefono', 'Coinc.>=50%', 'Estado', 'Fecha']],
+    body: rows.length ? rows : [['Sin registros', '', '', '', '', '', '', '']],
+    styles: { fontSize: 9, cellPadding: 4 },
+    headStyles: { fillColor: DARK, textColor: GOLD, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: LGRAY },
+    columnStyles: { 5: { halign: 'center' } },
+    margin: { left: 14, right: 14 },
+    theme: 'grid',
+  })
+
+  const pages = doc.internal.getNumberOfPages()
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i)
+    doc.setDrawColor(...GOLD)
+    doc.setLineWidth(0.4)
+    doc.line(14, pageH - 10, pageW - 14, pageH - 10)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(...GRAY)
+    doc.text('Refugio WOOF - Reporte generado automaticamente', 14, pageH - 5)
+    doc.text(`Pagina ${i} de ${pages}`, pageW - 14, pageH - 5, { align: 'right' })
+  }
+
+  doc.save(`perros-encontrados-${now.toISOString().slice(0, 10)}.pdf`)
 }
