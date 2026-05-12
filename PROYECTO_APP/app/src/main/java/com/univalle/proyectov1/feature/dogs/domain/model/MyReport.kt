@@ -6,6 +6,7 @@ data class MyReport(
     val id: String = "",
     val type: ReportType = ReportType.LOST,
     val photoUrl: String = "",
+    val photoUrls: List<String> = emptyList(),
     val status: String = "active",
     val createdAt: String = "",
     val dogName: String = "",

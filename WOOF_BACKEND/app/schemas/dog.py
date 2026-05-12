@@ -31,6 +31,7 @@ class ValidatePhotoResponse(BaseModel):
 class OwnerMatchItem(BaseModel):
     report_id: str
     found_dog_photo_url: str
+    found_dog_photo_urls: List[str] = []
     similarity_percent: float
     reporter_name: str
     reporter_phone: str
@@ -49,6 +50,7 @@ class OwnerMatchesResponse(BaseModel):
 class MyFoundReportItem(BaseModel):
     report_id: str
     photo_url: str
+    photo_urls: List[str] = []
     status: str
     created_at: str
     size: str

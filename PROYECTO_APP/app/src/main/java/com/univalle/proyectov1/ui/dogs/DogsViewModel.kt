@@ -5,11 +5,13 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.univalle.proyectov1.core.result.RateLimitException
 import com.univalle.proyectov1.core.result.UiState
 import com.univalle.proyectov1.feature.dogs.domain.model.Dog
 import com.univalle.proyectov1.feature.dogs.domain.model.DogMatch
@@ -75,11 +77,11 @@ class DogsViewModel @Inject constructor(
     private val _registerState = MutableStateFlow<UiState<Unit>>(UiState.Idle)
     val registerState: StateFlow<UiState<Unit>> = _registerState
 
-    // ─── Photo validation ─────────────────────────────────────────────────────
-    var photoValidationState by mutableStateOf<PhotoValidationState>(PhotoValidationState.Idle)
-    var lostDogPhotoUri by mutableStateOf<android.net.Uri?>(null)
+    // ─── Lost dog photos (hasta 3) ────────────────────────────────────────────
+    val lostDogPhotoUris = mutableStateListOf<Uri>()
+    val lostPhotoValidationStates = mutableStateListOf<PhotoValidationState>()
 
-    // Form state for new structured fields
+    // Form state
     var dogSize by mutableStateOf("")
     var dogColor by mutableStateOf("")
     var dogColorOther by mutableStateOf("")
@@ -88,9 +90,9 @@ class DogsViewModel @Inject constructor(
     var particularSigns by mutableStateOf("")
     var lostLocation by mutableStateOf("")
 
-    // ─── Photo validation (found dog) ─────────────────────────────────────────
-    var foundPhotoValidationState by mutableStateOf<PhotoValidationState>(PhotoValidationState.Idle)
-    var foundDogPhotoUri by mutableStateOf<android.net.Uri?>(null)
+    // ─── Found dog photos (hasta 3) ───────────────────────────────────────────
+    val foundDogPhotoUris = mutableStateListOf<Uri>()
+    val foundPhotoValidationStates = mutableStateListOf<PhotoValidationState>()
 
     // Form state for found dog
     var foundDogSize by mutableStateOf("")
@@ -103,7 +105,6 @@ class DogsViewModel @Inject constructor(
     private val _matchState = MutableStateFlow<UiState<List<DogMatch>>>(UiState.Idle)
     val matchState: StateFlow<UiState<List<DogMatch>>> = _matchState
 
-    // Last results (shared with MatchResultsScreen)
     private val _matchResults = MutableStateFlow<List<DogMatch>>(emptyList())
     val matchResults: StateFlow<List<DogMatch>> = _matchResults
 
@@ -117,7 +118,6 @@ class DogsViewModel @Inject constructor(
     private val _deactivateState = MutableStateFlow<UiState<Unit>>(UiState.Idle)
     val deactivateState: StateFlow<UiState<Unit>> = _deactivateState
 
-    // ─── My Reports (lost + found) ────────────────────────────────────────────
     private val _myReports = MutableStateFlow<List<MyReport>>(emptyList())
     val myReports: StateFlow<List<MyReport>> = _myReports
 
@@ -137,31 +137,88 @@ class DogsViewModel @Inject constructor(
     suspend fun hasPhone(): Boolean = userRepository.hasPhone()
     suspend fun getUserPhone(): String? = userRepository.getUserPhone()
 
-    // ─── Actions ──────────────────────────────────────────────────────────────
+    // ─── Lost dog photo management ────────────────────────────────────────────
 
-    fun validatePhoto(context: Context, uri: Uri) {
+    fun addOrReplaceLostDogPhoto(context: Context, uri: Uri, index: Int) {
+        if (index < lostDogPhotoUris.size) {
+            lostDogPhotoUris[index] = uri
+            lostPhotoValidationStates[index] = PhotoValidationState.Loading
+        } else {
+            lostDogPhotoUris.add(uri)
+            lostPhotoValidationStates.add(PhotoValidationState.Loading)
+        }
+        val targetIndex = index
         viewModelScope.launch {
-            photoValidationState = PhotoValidationState.Loading
             try {
                 val file = uriToFile(context, uri)
                 val result = dogsRepository.validateLostPhoto(file)
-                photoValidationState = result.fold(
+                val state = result.fold(
                     onSuccess = { PhotoValidationState.Valid },
                     onFailure = { PhotoValidationState.Invalid(it.message ?: "Foto no válida") }
                 )
+                if (targetIndex < lostPhotoValidationStates.size) {
+                    lostPhotoValidationStates[targetIndex] = state
+                }
             } catch (e: Exception) {
-                photoValidationState = PhotoValidationState.Invalid("Error al analizar la foto")
+                if (targetIndex < lostPhotoValidationStates.size) {
+                    lostPhotoValidationStates[targetIndex] = PhotoValidationState.Invalid("Error al analizar la foto")
+                }
             }
         }
     }
+
+    fun removeLostDogPhoto(index: Int) {
+        if (index < lostDogPhotoUris.size) {
+            lostDogPhotoUris.removeAt(index)
+            lostPhotoValidationStates.removeAt(index)
+        }
+    }
+
+    // ─── Found dog photo management ───────────────────────────────────────────
+
+    fun addOrReplaceFoundDogPhoto(context: Context, uri: Uri, index: Int) {
+        if (index < foundDogPhotoUris.size) {
+            foundDogPhotoUris[index] = uri
+            foundPhotoValidationStates[index] = PhotoValidationState.Loading
+        } else {
+            foundDogPhotoUris.add(uri)
+            foundPhotoValidationStates.add(PhotoValidationState.Loading)
+        }
+        val targetIndex = index
+        viewModelScope.launch {
+            try {
+                val file = uriToFile(context, uri)
+                val result = dogsRepository.validateFoundPhoto(file)
+                val state = result.fold(
+                    onSuccess = { PhotoValidationState.Valid },
+                    onFailure = { PhotoValidationState.Invalid(it.message ?: "Foto no válida") }
+                )
+                if (targetIndex < foundPhotoValidationStates.size) {
+                    foundPhotoValidationStates[targetIndex] = state
+                }
+            } catch (e: Exception) {
+                if (targetIndex < foundPhotoValidationStates.size) {
+                    foundPhotoValidationStates[targetIndex] = PhotoValidationState.Invalid("Error al analizar la foto")
+                }
+            }
+        }
+    }
+
+    fun removeFoundDogPhoto(index: Int) {
+        if (index < foundDogPhotoUris.size) {
+            foundDogPhotoUris.removeAt(index)
+            foundPhotoValidationStates.removeAt(index)
+        }
+    }
+
+    // ─── Actions ──────────────────────────────────────────────────────────────
 
     fun registerLostDog(
         context: Context,
         dogName: String,
         ownerName: String,
         ownerPhone: String,
-        ownerEmail: String,
-        photoUri: Uri
+        ownerEmail: String
     ) {
         viewModelScope.launch {
             val finalColor = if (dogColor == "Otro") dogColorOther else dogColor
@@ -182,16 +239,21 @@ class DogsViewModel @Inject constructor(
                 _registerState.value = UiState.Error("Selecciona el sexo del perro")
                 return@launch
             }
+            if (lostDogPhotoUris.isEmpty() || lostPhotoValidationStates.getOrNull(0) !is PhotoValidationState.Valid) {
+                _registerState.value = UiState.Error("Agrega al menos una foto válida del perro")
+                return@launch
+            }
+
             _registerState.value = UiState.Loading
             try {
-                val file = uriToFile(context, photoUri)
+                val files = lostDogPhotoUris.map { uri -> uriToFile(context, uri) }
                 val result = dogsRepository.registerLostDog(
                     dogName = dogName,
                     description = particularSigns,
                     ownerName = ownerName,
                     ownerPhone = ownerPhone,
                     ownerEmail = ownerEmail,
-                    photo = file,
+                    photos = files,
                     size = dogSize,
                     color = finalColor,
                     breed = dogBreed,
@@ -200,19 +262,29 @@ class DogsViewModel @Inject constructor(
                 )
                 result.fold(
                     onSuccess = { _registerState.value = UiState.Success(Unit) },
-                    onFailure = {
-                        photoValidationState = PhotoValidationState.Invalid(it.message ?: "Error al registrar")
-                        _registerState.value = UiState.Idle
+                    onFailure = { e ->
+                        if (e is RateLimitException) {
+                            _registerState.value = UiState.Error(e.message ?: "Límite semanal alcanzado")
+                        } else {
+                            if (lostPhotoValidationStates.isNotEmpty()) {
+                                lostPhotoValidationStates[0] = PhotoValidationState.Invalid(e.message ?: "Error al registrar")
+                            }
+                            _registerState.value = UiState.Idle
+                        }
                     }
                 )
             } catch (e: Exception) {
-                photoValidationState = PhotoValidationState.Invalid(e.message ?: "Error inesperado")
+                if (lostPhotoValidationStates.isNotEmpty()) {
+                    lostPhotoValidationStates[0] = PhotoValidationState.Invalid(e.message ?: "Error inesperado")
+                }
                 _registerState.value = UiState.Idle
             }
         }
     }
 
     fun resetLostDogForm() {
+        lostDogPhotoUris.clear()
+        lostPhotoValidationStates.clear()
         dogSize = ""
         dogColor = ""
         dogColorOther = ""
@@ -220,29 +292,10 @@ class DogsViewModel @Inject constructor(
         dogSex = ""
         particularSigns = ""
         lostLocation = ""
-        photoValidationState = PhotoValidationState.Idle
-        lostDogPhotoUri = null
-    }
-
-    fun validateFoundPhoto(context: Context, uri: Uri) {
-        viewModelScope.launch {
-            foundPhotoValidationState = PhotoValidationState.Loading
-            try {
-                val file = uriToFile(context, uri)
-                val result = dogsRepository.validateFoundPhoto(file)
-                foundPhotoValidationState = result.fold(
-                    onSuccess = { PhotoValidationState.Valid },
-                    onFailure = { PhotoValidationState.Invalid(it.message ?: "Foto no válida") }
-                )
-            } catch (e: Exception) {
-                foundPhotoValidationState = PhotoValidationState.Invalid("Error al analizar la foto")
-            }
-        }
     }
 
     fun matchFoundDog(
         context: Context,
-        photoUri: Uri,
         reporterName: String,
         reporterPhone: String,
         reporterEmail: String
@@ -278,12 +331,16 @@ class DogsViewModel @Inject constructor(
                 _matchState.value = UiState.Error("El correo electrónico no es válido")
                 return@launch
             }
+            if (foundDogPhotoUris.isEmpty() || foundPhotoValidationStates.getOrNull(0) !is PhotoValidationState.Valid) {
+                _matchState.value = UiState.Error("Agrega al menos una foto válida del perro")
+                return@launch
+            }
 
             _matchState.value = UiState.Loading
             try {
-                val file = uriToFile(context, photoUri)
+                val files = foundDogPhotoUris.map { uri -> uriToFile(context, uri) }
                 val result = dogsRepository.matchFoundDog(
-                    photo = file,
+                    photos = files,
                     size = foundDogSize,
                     color = finalColor,
                     sex = foundDogSex,
@@ -298,26 +355,34 @@ class DogsViewModel @Inject constructor(
                         _matchResults.value = filtered
                         _matchState.value = UiState.Success(filtered)
                     },
-                    onFailure = {
-                        foundPhotoValidationState = PhotoValidationState.Invalid(it.message ?: "Error al buscar coincidencias")
-                        _matchState.value = UiState.Idle
+                    onFailure = { e ->
+                        if (e is RateLimitException) {
+                            _matchState.value = UiState.Error(e.message ?: "Límite semanal alcanzado")
+                        } else {
+                            if (foundPhotoValidationStates.isNotEmpty()) {
+                                foundPhotoValidationStates[0] = PhotoValidationState.Invalid(e.message ?: "Error al buscar coincidencias")
+                            }
+                            _matchState.value = UiState.Idle
+                        }
                     }
                 )
             } catch (e: Exception) {
-                foundPhotoValidationState = PhotoValidationState.Invalid(e.message ?: "Error inesperado")
+                if (foundPhotoValidationStates.isNotEmpty()) {
+                    foundPhotoValidationStates[0] = PhotoValidationState.Invalid(e.message ?: "Error inesperado")
+                }
                 _matchState.value = UiState.Idle
             }
         }
     }
 
     fun resetFoundDogForm() {
+        foundDogPhotoUris.clear()
+        foundPhotoValidationStates.clear()
         foundDogSize = ""
         foundDogColor = ""
         foundDogColorOther = ""
         foundDogSex = ""
         foundDogSigns = ""
-        foundPhotoValidationState = PhotoValidationState.Idle
-        foundDogPhotoUri = null
     }
 
     fun loadMyDogs() {
@@ -366,7 +431,6 @@ class DogsViewModel @Inject constructor(
                     _myReports.value = _myReports.value.map { report ->
                         if (report.id == id) report.copy(status = newStatus) else report
                     }
-                    // Sync myDogs if it's a lost dog
                     if (type == ReportType.LOST) {
                         _myDogs.value = _myDogs.value.map { dog ->
                             if (dog.id == id) dog.copy(status = newStatus) else dog
@@ -405,13 +469,11 @@ class DogsViewModel @Inject constructor(
         val w = original.width
         val h = original.height
 
-        // Escalar manteniendo aspect ratio hasta que el lado más corto sea 800px
         val scale = target.toFloat() / minOf(w, h)
         val scaledW = (w * scale).toInt()
         val scaledH = (h * scale).toInt()
         val scaled = Bitmap.createScaledBitmap(original, scaledW, scaledH, true)
 
-        // Center crop a 800×800
         val left = (scaledW - target) / 2
         val top = (scaledH - target) / 2
         val cropped = Bitmap.createBitmap(scaled, left, top, target, target)

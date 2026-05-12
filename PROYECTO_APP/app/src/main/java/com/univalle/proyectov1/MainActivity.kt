@@ -315,8 +315,8 @@ class MainActivity : ComponentActivity() {
                                     viewModel = dogsViewModel,
                                     onBack = { navController.popBackStack() },
                                     onNavigateToMatches = {
-                                        navController.navigate(Routes.MATCH_RESULTS) {
-                                            popUpTo(Routes.HOME)
+                                        navController.navigate(Routes.HOME) {
+                                            popUpTo(Routes.HOME) { inclusive = true }
                                         }
                                     }
                                 )

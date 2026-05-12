@@ -96,7 +96,7 @@
             <circle cx="11" cy="11" r="8"/>
             <path d="m21 21-4.35-4.35"/>
           </svg>
-          Encontré un perro
+          Registrar perro del refugio
         </button>
 
         <button class="nav-item" data-section="my-reports">
@@ -269,7 +269,7 @@
         </div>
 
         <!-- ── Fila 2: Donas ── -->
-        <div class="charts-row" style="margin-bottom:36px">
+        <div class="charts-row">
           <div class="chart-card">
             <p class="chart-title">Estado — perros extraviados</p>
             <div class="chart-wrap chart-wrap--donut">
@@ -286,6 +286,21 @@
             <p class="chart-title">Usuarios activos vs bloqueados</p>
             <div class="chart-wrap chart-wrap--donut">
               <canvas id="chart-users-status"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Fila 3: Permanencia ── -->
+        <div class="charts-row" style="margin-bottom:36px">
+          <div class="chart-card" style="grid-column:span 2">
+            <div style="margin-bottom:14px">
+              <p class="chart-title" style="margin-bottom:4px">Permanencia en el refugio de los perritos encontrados</p>
+              <p style="font-size:12px; color:rgba(255,255,255,0.45); margin:0">
+                Solo tus reportes registrados · Dorado = aún activo · Verde = devuelto al dueño
+              </p>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="chart-permanencia"></canvas>
             </div>
           </div>
         </div>
@@ -529,59 +544,176 @@
       <!-- ══ SECCIÓN: ENCONTRÉ UN PERRO ══ -->
       <div id="section-report-found" class="section-content hidden">
         <div class="section-header">
-          <h2 class="section-title">Encontré un perro</h2>
-          <p class="section-sub">Sube una foto para buscar coincidencias con perros perdidos</p>
+          <h2 class="section-title">Registrar perro del refugio</h2>
+          <p class="section-sub">Sube hasta 3 fotos para buscar coincidencias con perros perdidos</p>
         </div>
         <div class="form-panel">
 
           <div class="panel-block">
-            <p class="panel-label">Foto del perro <span class="req-mark">*</span></p>
-            <div class="upload-box" id="upload-box">
-              <input type="file" id="photo-input" accept="image/*" style="display:none" />
-              <div id="upload-placeholder">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
-                  stroke="#D4AF37" stroke-width="1.5" stroke-linecap="round">
-                  <rect x="3" y="3" width="18" height="18" rx="2"/>
-                  <circle cx="8.5" cy="8.5" r="1.5"/>
-                  <polyline points="21 15 16 10 5 21"/>
-                </svg>
-                <p>Haz clic para agregar la foto del perro</p>
-                <span>Solo 1 foto</span>
-              </div>
-              <img id="upload-preview" src="" alt="" style="display:none" />
-              <!-- Overlay: analizando -->
-              <div id="photo-loading-overlay" class="photo-overlay hidden">
-                <div class="spinner white"></div>
-                <span style="color:rgba(255,255,255,0.85); font-size:13px; margin-top:6px">Analizando foto...</span>
-              </div>
-              <!-- Badge: foto válida -->
-              <div id="photo-valid-badge" class="photo-valid-badge hidden">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                  stroke="#fff" stroke-width="3" stroke-linecap="round">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
-              </div>
-              <!-- Etiqueta cambiar foto -->
-              <div id="photo-change-label" class="photo-change-label hidden">Cambiar foto</div>
-              <!-- Overlay: foto inválida -->
-              <div id="photo-error-overlay" class="photo-overlay photo-overlay--error hidden">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
-                  stroke="#EF5350" stroke-width="1.8" stroke-linecap="round">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="15" y1="9" x2="9" y2="15"/>
-                  <line x1="9" y1="9" x2="15" y2="15"/>
-                </svg>
-                <span style="color:rgba(255,255,255,0.85); font-size:12px; margin-top:4px">Toca para cambiar foto</span>
+            <p class="panel-label">Fotos del perro <span class="req-mark">*</span>
+              <span style="color:var(--muted);font-weight:400;font-size:12px;margin-left:4px">(hasta 3 fotos)</span>
+            </p>
+
+            <!-- Banner informativo -->
+            <div class="photo-info-banner">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="var(--gold)" stroke-width="1.8" stroke-linecap="round" style="flex-shrink:0;margin-top:1px">
+                <rect x="3" y="3" width="18" height="14" rx="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+              <div>
+                <p class="photo-info-title">Agrega hasta 3 fotos del perro</p>
+                <p class="photo-info-desc">Fotos desde diferentes ángulos (frente y costado) mejoran la precisión de búsqueda. Mínimo 1 foto obligatoria.</p>
               </div>
             </div>
-            <!-- Estado de validación bajo el cuadro -->
-            <div id="photo-status-row" class="photo-status-row photo-status-row--hint">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-              </svg>
-              <span>Solo 1 foto</span>
+
+            <div class="photos-upload-grid">
+
+              <!-- Slot 1 (requerida) -->
+              <div class="photo-slot-wrap">
+                <div class="upload-box" id="upload-box-1">
+                  <input type="file" id="photo-input-1" accept="image/*" style="display:none" />
+                  <div class="upload-placeholder" id="upload-placeholder-1">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
+                      stroke="#D4AF37" stroke-width="1.5" stroke-linecap="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    <p>Foto 1</p>
+                    <span class="slot-badge slot-badge--required">Requerida</span>
+                  </div>
+                  <img id="upload-preview-1" src="" alt="" style="display:none" />
+                  <div id="photo-loading-overlay-1" class="photo-overlay hidden">
+                    <div class="spinner white"></div>
+                    <span style="color:rgba(255,255,255,0.85);font-size:11px;margin-top:5px">Verificando...</span>
+                  </div>
+                  <div id="photo-valid-badge-1" class="photo-valid-badge hidden">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                      stroke="#fff" stroke-width="3" stroke-linecap="round">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  </div>
+                  <div id="photo-change-label-1" class="photo-change-label hidden">Cambiar</div>
+                  <div id="photo-error-overlay-1" class="photo-overlay photo-overlay--error hidden">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+                      stroke="#EF5350" stroke-width="1.8" stroke-linecap="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="15" y1="9" x2="9" y2="15"/>
+                      <line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                    <span style="color:rgba(255,255,255,0.85);font-size:10px;margin-top:3px">Cambiar foto</span>
+                  </div>
+                </div>
+                <div id="photo-status-row-1" class="photo-status-row photo-status-row--hint">
+                  <span>Foto principal</span>
+                </div>
+                <p class="field-error" id="photo-error-1"></p>
+              </div>
+
+              <!-- Slot 2 (opcional) -->
+              <div class="photo-slot-wrap">
+                <div class="upload-box" id="upload-box-2">
+                  <input type="file" id="photo-input-2" accept="image/*" style="display:none" />
+                  <div class="upload-placeholder" id="upload-placeholder-2">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
+                      stroke="#D4AF37" stroke-width="1.5" stroke-linecap="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    <p>Foto 2</p>
+                    <span class="slot-badge slot-badge--optional">Opcional</span>
+                  </div>
+                  <img id="upload-preview-2" src="" alt="" style="display:none" />
+                  <div id="photo-loading-overlay-2" class="photo-overlay hidden">
+                    <div class="spinner white"></div>
+                    <span style="color:rgba(255,255,255,0.85);font-size:11px;margin-top:5px">Verificando...</span>
+                  </div>
+                  <div id="photo-valid-badge-2" class="photo-valid-badge hidden">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                      stroke="#fff" stroke-width="3" stroke-linecap="round">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  </div>
+                  <div id="photo-change-label-2" class="photo-change-label hidden">Cambiar</div>
+                  <div id="photo-error-overlay-2" class="photo-overlay photo-overlay--error hidden">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+                      stroke="#EF5350" stroke-width="1.8" stroke-linecap="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="15" y1="9" x2="9" y2="15"/>
+                      <line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                    <span style="color:rgba(255,255,255,0.85);font-size:10px;margin-top:3px">Cambiar foto</span>
+                  </div>
+                  <!-- Candado: visible hasta que se agregue la Foto 1 -->
+                  <div class="photo-lock-overlay" id="photo-lock-overlay-2">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                      stroke="rgba(255,255,255,0.4)" stroke-width="1.8" stroke-linecap="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2"/>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    <span>Agrega la<br>Foto 1 primero</span>
+                  </div>
+                </div>
+                <div id="photo-status-row-2" class="photo-status-row photo-status-row--hint">
+                  <span>Foto adicional</span>
+                </div>
+                <p class="field-error" id="photo-error-2"></p>
+              </div>
+
+              <!-- Slot 3 (opcional) -->
+              <div class="photo-slot-wrap">
+                <div class="upload-box" id="upload-box-3">
+                  <input type="file" id="photo-input-3" accept="image/*" style="display:none" />
+                  <div class="upload-placeholder" id="upload-placeholder-3">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
+                      stroke="#D4AF37" stroke-width="1.5" stroke-linecap="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    <p>Foto 3</p>
+                    <span class="slot-badge slot-badge--optional">Opcional</span>
+                  </div>
+                  <img id="upload-preview-3" src="" alt="" style="display:none" />
+                  <div id="photo-loading-overlay-3" class="photo-overlay hidden">
+                    <div class="spinner white"></div>
+                    <span style="color:rgba(255,255,255,0.85);font-size:11px;margin-top:5px">Verificando...</span>
+                  </div>
+                  <div id="photo-valid-badge-3" class="photo-valid-badge hidden">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                      stroke="#fff" stroke-width="3" stroke-linecap="round">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  </div>
+                  <div id="photo-change-label-3" class="photo-change-label hidden">Cambiar</div>
+                  <div id="photo-error-overlay-3" class="photo-overlay photo-overlay--error hidden">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+                      stroke="#EF5350" stroke-width="1.8" stroke-linecap="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="15" y1="9" x2="9" y2="15"/>
+                      <line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                    <span style="color:rgba(255,255,255,0.85);font-size:10px;margin-top:3px">Cambiar foto</span>
+                  </div>
+                  <!-- Candado: visible hasta que se agregue la Foto 1 -->
+                  <div class="photo-lock-overlay" id="photo-lock-overlay-3">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                      stroke="rgba(255,255,255,0.4)" stroke-width="1.8" stroke-linecap="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2"/>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    <span>Agrega la<br>Foto 1 primero</span>
+                  </div>
+                </div>
+                <div id="photo-status-row-3" class="photo-status-row photo-status-row--hint">
+                  <span>Foto adicional</span>
+                </div>
+                <p class="field-error" id="photo-error-3"></p>
+              </div>
+
             </div>
             <p class="field-error" id="photo-error"></p>
           </div>
@@ -610,8 +742,9 @@
             </div>
             <div id="color-other-wrapper" class="hidden" style="margin-top:10px">
               <div class="input-wrapper" id="color-other-input-wrapper">
-                <input type="text" id="color-other" placeholder="Describe el color" />
+                <input type="text" id="color-other" placeholder="Describe el color" maxlength="20" />
               </div>
+              <p id="color-other-counter" style="text-align:right; font-size:11px; color:rgba(255,255,255,0.35); margin:3px 4px 0 0">0/20</p>
             </div>
             <p class="field-error" id="color-error"></p>
           </div>
@@ -628,9 +761,11 @@
             <p class="panel-label">Señas particulares <span style="color:var(--muted); font-weight:400">(opcional)</span></p>
             <div class="input-wrapper" style="height:auto; padding:12px 14px; align-items:flex-start">
               <textarea id="signs" rows="3" placeholder="Ej: mancha en el ojo, collar azul, sin collar..."
+                maxlength="150"
                 style="flex:1; background:transparent; border:none; outline:none; color:var(--white);
                        font-size:15px; caret-color:var(--gold); resize:none; font-family:inherit;"></textarea>
             </div>
+            <p id="signs-counter" style="text-align:right; font-size:11px; color:rgba(255,255,255,0.35); margin:3px 4px 0 0">0/150</p>
           </div>
 
           <div class="panel-divider"></div>
@@ -646,8 +781,9 @@
                   <circle cx="12" cy="7" r="4"/>
                 </svg>
               </span>
-              <input type="text" id="reporter-name" placeholder="Nombre completo" />
+              <input type="text" id="reporter-name" placeholder="Nombre completo" maxlength="50" />
             </div>
+            <p id="reporter-name-counter" style="text-align:right; font-size:11px; color:rgba(255,255,255,0.35); margin:3px 4px 0 0">0/50</p>
             <p class="field-error" id="name-error"></p>
           </div>
 
@@ -683,12 +819,6 @@
           <button class="btn-submit" id="btn-match" type="button" disabled>
             Buscar coincidencias
           </button>
-
-          <div id="match-results" class="hidden" style="margin-top:28px">
-            <div class="panel-divider"></div>
-            <p class="panel-section-title" id="match-title"></p>
-            <div id="match-cards" class="dog-grid" style="margin-top:16px"></div>
-          </div>
 
         </div>
       </div>
@@ -776,6 +906,7 @@
       <div class="dog-modal-photo-wrap">
         <img id="dog-modal-photo" class="dog-modal-photo" src="" alt="" />
         <div id="dog-modal-placeholder" class="dog-modal-placeholder hidden">🐾</div>
+        <div id="dog-modal-thumbs" class="dog-modal-thumbs hidden"></div>
       </div>
       <div class="dog-modal-body">
         <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:8px">
@@ -850,6 +981,7 @@
       <div class="dog-modal-photo-wrap">
         <img id="found-modal-photo" class="dog-modal-photo" src="" alt="Perro encontrado" />
         <div id="found-modal-placeholder" class="dog-modal-placeholder hidden">🐾</div>
+        <div id="found-modal-thumbs" class="dog-modal-thumbs hidden"></div>
       </div>
       <div class="dog-modal-body">
         <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:8px">
@@ -916,6 +1048,7 @@
       <div class="dog-modal-photo-wrap">
         <img id="my-modal-photo" class="dog-modal-photo my-modal-photo-fit" src="" alt="" />
         <div id="my-modal-placeholder" class="dog-modal-placeholder hidden">🐾</div>
+        <div id="my-modal-thumbs" class="dog-modal-thumbs hidden"></div>
       </div>
       <div class="dog-modal-body">
         <p id="my-modal-type" style="font-size:12px; font-weight:600; margin-bottom:4px"></p>
@@ -929,6 +1062,11 @@
         <button class="btn-toggle-status" id="my-btn-toggle-status" type="button">
           Desactivar publicación
         </button>
+        <div id="my-modal-matches-section" class="hidden">
+          <div class="dog-modal-divider" style="margin-top:24px"></div>
+          <p class="panel-section-title" style="margin-bottom:12px" id="my-modal-matches-title">Posibles coincidencias</p>
+          <div id="my-modal-matches"></div>
+        </div>
       </div>
     </div>
   </div>

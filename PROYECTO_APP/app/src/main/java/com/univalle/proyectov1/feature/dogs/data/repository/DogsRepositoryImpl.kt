@@ -9,6 +9,7 @@ import com.univalle.proyectov1.feature.dogs.domain.model.Dog
 import com.univalle.proyectov1.feature.dogs.domain.model.DogMatch
 import com.univalle.proyectov1.feature.dogs.domain.model.FoundDogMatchForOwner
 import com.univalle.proyectov1.feature.dogs.domain.model.MyReport
+import com.univalle.proyectov1.core.result.RateLimitException
 import com.univalle.proyectov1.feature.dogs.domain.model.ReportType
 import com.univalle.proyectov1.feature.dogs.domain.repository.DogsRepository
 import kotlinx.coroutines.tasks.await
@@ -55,8 +56,7 @@ class DogsRepositoryImpl @Inject constructor(
             if (response.isDog) Result.success(response.message)
             else Result.failure(Exception(response.message))
         } catch (e: HttpException) {
-            val detail = parseErrorDetail(e)
-            Result.failure(Exception(detail))
+            Result.failure(parseHttpException(e))
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -71,8 +71,7 @@ class DogsRepositoryImpl @Inject constructor(
             if (response.isDog) Result.success(response.message)
             else Result.failure(Exception(response.message))
         } catch (e: HttpException) {
-            val detail = parseErrorDetail(e)
-            Result.failure(Exception(detail))
+            Result.failure(parseHttpException(e))
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -84,7 +83,7 @@ class DogsRepositoryImpl @Inject constructor(
         ownerName: String,
         ownerPhone: String,
         ownerEmail: String,
-        photo: File,
+        photos: List<File>,
         size: String,
         color: String,
         breed: String,
@@ -93,9 +92,10 @@ class DogsRepositoryImpl @Inject constructor(
     ): Result<String> {
         return try {
             val token = getBearerToken()
-            val photoBody = photo.asRequestBody("image/*".toMediaTypeOrNull())
-            val photoPart = MultipartBody.Part.createFormData("photo", photo.name, photoBody)
-
+            val photoParts = photos.map { file ->
+                val body = file.asRequestBody("image/*".toMediaTypeOrNull())
+                MultipartBody.Part.createFormData("photos", file.name, body)
+            }
             val response = api.registerLostDog(
                 token = token,
                 dogName = dogName.toRequestBody("text/plain".toMediaTypeOrNull()),
@@ -103,7 +103,7 @@ class DogsRepositoryImpl @Inject constructor(
                 ownerName = ownerName.toRequestBody("text/plain".toMediaTypeOrNull()),
                 ownerPhone = ownerPhone.toRequestBody("text/plain".toMediaTypeOrNull()),
                 ownerEmail = ownerEmail.toRequestBody("text/plain".toMediaTypeOrNull()),
-                photo = photoPart,
+                photos = photoParts,
                 size = size.toRequestBody("text/plain".toMediaTypeOrNull()),
                 color = color.toRequestBody("text/plain".toMediaTypeOrNull()),
                 breed = breed.toRequestBody("text/plain".toMediaTypeOrNull()),
@@ -112,15 +112,14 @@ class DogsRepositoryImpl @Inject constructor(
             )
             Result.success(response.dogId)
         } catch (e: HttpException) {
-            val detail = parseErrorDetail(e)
-            Result.failure(Exception(detail))
+            Result.failure(parseHttpException(e))
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
     override suspend fun matchFoundDog(
-        photo: File,
+        photos: List<File>,
         size: String,
         color: String,
         sex: String,
@@ -131,12 +130,13 @@ class DogsRepositoryImpl @Inject constructor(
     ): Result<List<DogMatch>> {
         return try {
             val token = getBearerToken()
-            val photoBody = photo.asRequestBody("image/*".toMediaTypeOrNull())
-            val photoPart = MultipartBody.Part.createFormData("photo", photo.name, photoBody)
-
+            val photoParts = photos.map { file ->
+                val body = file.asRequestBody("image/*".toMediaTypeOrNull())
+                MultipartBody.Part.createFormData("photos", file.name, body)
+            }
             val response = api.matchFoundDog(
                 token = token,
-                photo = photoPart,
+                photos = photoParts,
                 size = size.toRequestBody("text/plain".toMediaTypeOrNull()),
                 color = color.toRequestBody("text/plain".toMediaTypeOrNull()),
                 sex = sex.toRequestBody("text/plain".toMediaTypeOrNull()),
@@ -162,20 +162,20 @@ class DogsRepositoryImpl @Inject constructor(
             }
             Result.success(matches)
         } catch (e: HttpException) {
-            val detail = parseErrorDetail(e)
-            Result.failure(Exception(detail))
+            Result.failure(parseHttpException(e))
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    private fun parseErrorDetail(e: HttpException): String {
-        return try {
+    private fun parseHttpException(e: HttpException): Exception {
+        val detail = try {
             val body = e.response()?.errorBody()?.string() ?: ""
             JSONObject(body).getString("detail")
         } catch (_: Exception) {
             "Error al procesar la solicitud"
         }
+        return if (e.code() == 429) RateLimitException(detail) else Exception(detail)
     }
 
     override suspend fun getMyLostDogs(): List<Dog> {
@@ -195,7 +195,7 @@ class DogsRepositoryImpl @Inject constructor(
                     ownerName = doc.getString("owner_name") ?: "",
                     ownerPhone = doc.getString("owner_phone") ?: "",
                     ownerEmail = doc.getString("owner_email") ?: "",
-                    photoUrl = doc.getString("photo_url") ?: "",
+                    photoUrl = doc.getString("photo_url_1") ?: doc.getString("photo_url") ?: "",
                     status = doc.getString("status") ?: "active",
                     createdAt = if (date != null) dateFormat.format(date) else "",
                     uid = uid,
@@ -220,10 +220,16 @@ class DogsRepositoryImpl @Inject constructor(
                 .get().await()
             snapshot.documents.map { doc ->
                 val date = doc.getTimestamp("created_at")?.toDate()
+                val lostPhotoUrls = (1..3).mapNotNull { i ->
+                    doc.getString("photo_url_$i")
+                }.ifEmpty {
+                    listOfNotNull(doc.getString("photo_url"))
+                }
                 MyReport(
                     id = doc.id,
                     type = ReportType.LOST,
-                    photoUrl = doc.getString("photo_url") ?: "",
+                    photoUrl = lostPhotoUrls.firstOrNull() ?: "",
+                    photoUrls = lostPhotoUrls,
                     status = doc.getString("status") ?: "active",
                     createdAt = if (date != null) dateFormat.format(date) else "",
                     dogName = doc.getString("name") ?: "",
@@ -247,10 +253,12 @@ class DogsRepositoryImpl @Inject constructor(
                     val d = sdf.parse(r.createdAt)
                     if (d != null) dateFormat.format(d) else r.createdAt
                 } catch (_: Exception) { r.createdAt }
+                val foundPhotoUrls = r.photoUrls.ifEmpty { listOfNotNull(r.photoUrl.ifBlank { null }) }
                 MyReport(
                     id = r.reportId,
                     type = ReportType.FOUND,
-                    photoUrl = r.photoUrl,
+                    photoUrl = foundPhotoUrls.firstOrNull() ?: r.photoUrl,
+                    photoUrls = foundPhotoUrls,
                     status = r.status,
                     createdAt = parsedDate,
                     dogName = "",
@@ -308,9 +316,13 @@ class DogsRepositoryImpl @Inject constructor(
             val token = getBearerToken()
             val response = api.getMatchesForDog(token = token, dogId = dogId)
             val matches = response.matches.map { m ->
+                val photoUrls = m.foundDogPhotoUrls.ifEmpty {
+                    listOfNotNull(m.foundDogPhotoUrl.ifBlank { null })
+                }
                 FoundDogMatchForOwner(
                     reportId = m.reportId,
-                    foundDogPhotoUrl = m.foundDogPhotoUrl,
+                    foundDogPhotoUrl = photoUrls.firstOrNull() ?: m.foundDogPhotoUrl,
+                    foundDogPhotoUrls = photoUrls,
                     similarityPercent = m.similarityPercent,
                     reporterName = m.reporterName,
                     reporterPhone = m.reporterPhone,

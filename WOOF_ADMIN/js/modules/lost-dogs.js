@@ -1,6 +1,6 @@
 import { db } from '../firebase-config.js'
 import {
-  collection, getDocs, doc, updateDoc,
+  collection, getDocs, doc, updateDoc, serverTimestamp, deleteField,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js'
 import { showToast, buildDogCard } from './utils.js'
 
@@ -165,11 +165,25 @@ export function initLostDogs() {
     try {
       const updateData = { status: newStatus }
       if (reason) updateData.deactivation_reason = reason
+      if (newStatus === 'inactive') {
+        updateData.deactivated_at = serverTimestamp()
+        if (reason === 'El perro ya fue recuperado') updateData.returned_to_owner = true
+      } else {
+        updateData.deactivated_at = deleteField()
+        updateData.returned_to_owner = deleteField()
+      }
       await updateDoc(doc(db, 'lost_dogs', dog.id), updateData)
 
+      const now = new Date()
       dog.status = newStatus
+      if (newStatus === 'inactive') dog.deactivated_at = { toDate: () => now }
+      else delete dog.deactivated_at
       const cached = allLostDogs.find(d => d.id === dog.id)
-      if (cached) cached.status = newStatus
+      if (cached) {
+        cached.status = newStatus
+        if (newStatus === 'inactive') cached.deactivated_at = { toDate: () => now }
+        else delete cached.deactivated_at
+      }
 
       document.getElementById('lost-reason-overlay').classList.add('hidden')
 
@@ -296,14 +310,36 @@ function openDogModal(data) {
 
   const photoEl       = document.getElementById('dog-modal-photo')
   const placeholderEl = document.getElementById('dog-modal-placeholder')
-  if (data.photo_url) {
-    photoEl.src = data.photo_url
+  const thumbsEl      = document.getElementById('dog-modal-thumbs')
+  const allUrls = (() => {
+    const urls = []
+    for (let i = 1; i <= 3; i++) {
+      if (data[`photo_url_${i}`]) urls.push(data[`photo_url_${i}`])
+    }
+    return urls.length > 0 ? urls : (data.photo_url ? [data.photo_url] : [])
+  })()
+
+  if (allUrls.length > 0) {
+    photoEl.src = allUrls[0]
     photoEl.alt = data.name || 'Perro'
     photoEl.classList.remove('hidden')
     placeholderEl.classList.add('hidden')
+    if (allUrls.length > 1) {
+      thumbsEl.classList.remove('hidden')
+      thumbsEl.innerHTML = allUrls.map((url, i) => `
+        <img class="dog-modal-thumb ${i === 0 ? 'active' : ''}"
+             src="${url}" alt="Foto ${i + 1}"
+             onclick="_selectDogPhoto(event,'${url}')" />
+      `).join('')
+    } else {
+      thumbsEl.classList.add('hidden')
+      thumbsEl.innerHTML = ''
+    }
   } else {
     photoEl.classList.add('hidden')
     placeholderEl.classList.remove('hidden')
+    thumbsEl.classList.add('hidden')
+    thumbsEl.innerHTML = ''
   }
 
   document.getElementById('dog-modal-name').textContent = (data.name || 'Sin nombre').toUpperCase()
@@ -338,6 +374,17 @@ function openDogModal(data) {
 
   // Fecha siempre al final
   fields.push({ icon: '📅', label: 'Fecha de registro', value: date })
+
+  // Permanencia: solo si el perro fue desactivado (tiene deactivated_at)
+  const deactivatedDate = data.deactivated_at?.toDate?.()
+  const createdDate     = data.created_at?.toDate?.()
+  if (deactivatedDate && createdDate) {
+    const diffMs   = deactivatedDate - createdDate
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+    const deactivatedStr = deactivatedDate.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
+    const permanenciaLabel = data.returned_to_owner ? 'Permanencia en el refugio (devuelto)' : 'Permanencia hasta desactivación'
+    fields.push({ icon: '⏱️', label: permanenciaLabel, value: `${diffDays} día${diffDays !== 1 ? 's' : ''} (cerrado: ${deactivatedStr})` })
+  }
 
   document.getElementById('dog-modal-fields').innerHTML = fields.map(f => `
     <div class="dog-modal-field">
@@ -489,4 +536,11 @@ function _generatePDF() {
   }
 
   doc.save(`perros-extraviados-${now.toISOString().slice(0, 10)}.pdf`)
+}
+
+// ── Galería multi-foto ────────────────────────────────────────────────────────
+window._selectDogPhoto = function (e, url) {
+  document.getElementById('dog-modal-photo').src = url
+  document.querySelectorAll('#dog-modal-thumbs .dog-modal-thumb')
+    .forEach(t => t.classList.toggle('active', t.getAttribute('src') === url || t.onclick?.toString().includes(url)))
 }

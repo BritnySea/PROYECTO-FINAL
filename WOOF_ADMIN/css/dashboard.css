@@ -1,8 +1,3 @@
-/* ═══════════════════════════════════════════
-   WOOF ADMIN — Dashboard
-   Usado por: dashboard.html
-   ═══════════════════════════════════════════ */
-
 /* ════════════════════════════════
    HEADER
    ════════════════════════════════ */
@@ -331,15 +326,18 @@
 .upload-box.valid-photo    { border-style: solid; border-color: #4CAF50; }
 .upload-box.error-photo    { border-style: solid; border-color: rgba(255,68,68,0.6); }
 
-#upload-placeholder {
+#upload-placeholder,
+.upload-placeholder {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
   pointer-events: none;
 }
-#upload-placeholder p    { font-size: 14px; color: rgba(255,255,255,0.5); }
-#upload-placeholder span {
+#upload-placeholder p,
+.upload-placeholder p    { font-size: 14px; color: rgba(255,255,255,0.5); }
+#upload-placeholder span,
+.upload-placeholder span {
   font-size: 11px;
   color: rgba(212,175,55,0.6);
   font-weight: 600;
@@ -347,12 +345,93 @@
   text-transform: uppercase;
 }
 
-#upload-preview {
+#upload-preview,
+[id^="upload-preview-"] {
   width: 100%;
   height: 100%;
   object-fit: contain;
   background: rgba(0,0,0,0.4);
 }
+
+/* ── Multi-photo grid ── */
+.photos-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.photos-upload-grid .upload-box {
+  height: 180px;
+}
+.photo-slot-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Slot badges (Requerida / Opcional) ── */
+.slot-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+.slot-badge--required {
+  background: rgba(212,175,55,0.15);
+  color: var(--gold);
+  border: 1px solid rgba(212,175,55,0.4);
+}
+.slot-badge--optional {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.35);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+/* ── Photo info banner (dorado) ── */
+.photo-info-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(212,175,55,0.08);
+  border: 1px solid rgba(212,175,55,0.3);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.photo-info-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gold);
+  margin-bottom: 3px;
+}
+.photo-info-desc {
+  font-size: 12px;
+  color: rgba(255,255,255,0.65);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── Overlay de candado en slots opcionales ── */
+.photo-lock-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: rgba(10,10,10,0.72);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  z-index: 3;
+  cursor: not-allowed;
+}
+.photo-lock-overlay span {
+  font-size: 11px;
+  color: rgba(255,255,255,0.38);
+  text-align: center;
+  line-height: 1.4;
+}
+.photo-lock-overlay.hidden { display: none !important; }
 
 /* ── Photo validation overlays ── */
 .photo-overlay {
@@ -732,6 +811,46 @@
 }
 
 .dog-modal-body { padding: 24px 28px 28px; }
+
+.dog-modal-thumbs {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  background: rgba(0,0,0,0.5);
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.dog-modal-thumbs::-webkit-scrollbar { display: none; }
+.dog-modal-photo-wrap { position: relative; }
+.dog-modal-thumb {
+  width: 52px;
+  height: 52px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  opacity: 0.65;
+  transition: opacity .15s, border-color .15s;
+  flex-shrink: 0;
+}
+.dog-modal-thumb:hover { opacity: 1; }
+.dog-modal-thumb.active { border-color: #D4AF37; opacity: 1; }
+.dog-modal-photo-count {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: rgba(0,0,0,0.6);
+  color: #D4AF37;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+  backdrop-filter: blur(4px);
+}
 
 .dog-modal-name {
   font-size: 22px;
@@ -1119,6 +1238,103 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.found-match-photo--clickable {
+  cursor: zoom-in;
+}
+
+.found-match-thumbs {
+  display: flex;
+  gap: 5px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.found-match-thumb {
+  width: 38px;
+  height: 38px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  opacity: 0.65;
+  transition: opacity 0.15s, border-color 0.15s;
+}
+
+.found-match-thumb:hover  { opacity: 1; }
+.found-match-thumb.active { border-color: var(--gold); opacity: 1; }
+
+/* ── Visor pantalla completa (fotos perro perdido) ──────────────────────── */
+.match-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0,0,0,0.95);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.match-lightbox.hidden { display: none; }
+
+.match-lightbox-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.match-lightbox-close:hover { background: rgba(255,255,255,0.2); }
+
+.match-lightbox-counter {
+  position: absolute;
+  top: 22px;
+  left: 20px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.7);
+  background: rgba(0,0,0,0.4);
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.match-lightbox-img {
+  max-width: 90vw;
+  max-height: 72vh;
+  object-fit: contain;
+  border-radius: 10px;
+}
+
+.match-lightbox-thumbs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.match-lightbox-thumb {
+  width: 58px;
+  height: 58px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s, border-color 0.15s;
+}
+.match-lightbox-thumb:hover  { opacity: 1; }
+.match-lightbox-thumb.active { border-color: var(--gold); opacity: 1; }
 .btn-confirm-activate   { background: #4CAF50; color: #fff; }
 
 /* ════════════════════════════════

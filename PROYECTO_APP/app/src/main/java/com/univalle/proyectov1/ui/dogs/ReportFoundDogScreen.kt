@@ -3,11 +3,13 @@ package com.univalle.proyectov1.ui.dogs
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -24,13 +26,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.foundation.Image
-import com.univalle.proyectov1.R
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
+import com.univalle.proyectov1.R
 import com.univalle.proyectov1.core.result.UiState
 import com.univalle.proyectov1.ui.theme.*
 
@@ -63,15 +65,14 @@ fun ReportFoundDogScreen(
     }
 
     var showPhotoTipDialog by remember { mutableStateOf(false) }
+    var targetPhotoIndex by remember { mutableIntStateOf(0) }
     val goldGradient = Brush.horizontalGradient(colors = listOf(Gold, GoldLight))
-    val foundPhotoValidationState = viewModel.foundPhotoValidationState
 
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         if (uri != null) {
-            viewModel.foundDogPhotoUri = uri
-            viewModel.validateFoundPhoto(context, uri)
+            viewModel.addOrReplaceFoundDogPhoto(context, uri, targetPhotoIndex)
         }
     }
 
@@ -89,7 +90,7 @@ fun ReportFoundDogScreen(
             onDismissRequest = { showPhotoTipDialog = false },
             containerColor = DarkSurface,
             title = {
-                Text("Consejo para mejor resultado", color = Gold, fontWeight = FontWeight.Bold)
+                Text("Consejos para mejor resultado", color = Gold, fontWeight = FontWeight.Bold)
             },
             text = {
                 Column {
@@ -98,17 +99,39 @@ fun ReportFoundDogScreen(
                         contentDescription = "Ejemplo de foto correcta",
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(180.dp)
+                            .height(160.dp)
                             .clip(RoundedCornerShape(12.dp)),
                         contentScale = ContentScale.Crop
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        "Toma la foto de frente al perro. Nuestro modelo de IA fue entrenado principalmente con fotos frontales, aunque también funciona con otros ángulos.\n\nLa foto debe ser clara y bien iluminada.",
+                        "La primera foto debe ser de frente al perro para obtener la mejor identificación.",
                         color = Color.White.copy(alpha = 0.85f),
                         fontSize = 14.sp,
                         lineHeight = 20.sp
                     )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Gold.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+                            .padding(10.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lightbulb,
+                            contentDescription = null,
+                            tint = Gold,
+                            modifier = Modifier.size(16.dp).padding(top = 1.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Para mejores resultados, agrega 2 o 3 fotos desde diferentes ángulos (frente y costado). Más fotos = mayor precisión.",
+                            color = Gold,
+                            fontSize = 13.sp,
+                            lineHeight = 18.sp
+                        )
+                    }
                 }
             },
             confirmButton = {
@@ -152,142 +175,141 @@ fun ReportFoundDogScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Sube una foto y completa los datos del perro para ayudar a encontrar a su dueño",
+                text = "Sube fotos y completa los datos para ayudar a encontrar al dueño",
                 color = Color.White.copy(alpha = 0.6f),
                 fontSize = 13.sp
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // ─── Selector de foto ─────────────────────────────────────────────
-            val borderBrush = when (foundPhotoValidationState) {
-                is PhotoValidationState.Valid ->
-                    Brush.horizontalGradient(listOf(FoundValidGreen, FoundValidGreen))
-                is PhotoValidationState.Invalid ->
-                    Brush.horizontalGradient(listOf(FoundInvalidRed, FoundInvalidRed))
-                else -> Brush.horizontalGradient(listOf(Gold, GoldLight))
-            }
-
-            Box(
+            // ─── Banner de recomendación de fotos ─────────────────────────────
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .border(2.dp, borderBrush, RoundedCornerShape(16.dp))
-                    .background(DarkSurface)
-                    .clickable { showPhotoTipDialog = true },
-                contentAlignment = Alignment.Center
+                    .background(Gold.copy(alpha = 0.1f), RoundedCornerShape(10.dp))
+                    .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                    .padding(12.dp),
+                verticalAlignment = Alignment.Top
             ) {
-                if (viewModel.foundDogPhotoUri != null) {
-                    AsyncImage(
-                        model = viewModel.foundDogPhotoUri,
-                        contentDescription = "Foto del perro encontrado",
-                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)),
-                        contentScale = ContentScale.Crop
+                Icon(
+                    imageVector = Icons.Default.PhotoLibrary,
+                    contentDescription = null,
+                    tint = Gold,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        "Agrega hasta 3 fotos del perro",
+                        color = Gold,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
                     )
-                    when (foundPhotoValidationState) {
-                        is PhotoValidationState.Loading -> {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(16.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    CircularProgressIndicator(color = Gold, modifier = Modifier.size(36.dp), strokeWidth = 3.dp)
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text("Analizando foto...", color = Color.White, fontSize = 13.sp)
-                                }
-                            }
-                        }
-                        is PhotoValidationState.Valid -> {
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(10.dp)
-                                    .background(FoundValidGreen, RoundedCornerShape(50))
-                                    .padding(4.dp)
-                            ) {
-                                Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(8.dp)
-                                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 12.dp, vertical = 4.dp)
-                            ) {
-                                Text("Cambiar foto", color = GoldLight, fontSize = 12.sp)
-                            }
-                        }
-                        is PhotoValidationState.Invalid -> {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(16.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = FoundInvalidRed, modifier = Modifier.size(40.dp))
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Text("Toca para cambiar foto", color = Color.White, fontSize = 12.sp)
-                                }
-                            }
-                        }
-                        else -> {
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(8.dp)
-                                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 12.dp, vertical = 4.dp)
-                            ) {
-                                Text("Cambiar foto", color = GoldLight, fontSize = 12.sp)
-                            }
-                        }
-                    }
-                } else {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.CameraAlt, contentDescription = null, tint = Gold, modifier = Modifier.size(48.dp))
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Toca para agregar foto del perro", color = Color.White.copy(alpha = 0.6f), fontSize = 14.sp)
-                    }
+                    Text(
+                        "Fotos desde diferentes ángulos (frente y costado) mejoran la precisión de búsqueda. Mínimo 1 foto obligatoria.",
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp
+                    )
                 }
             }
 
-            // Estado de validación debajo del recuadro
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // ─── Selección multi-foto ─────────────────────────────────────────
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FoundDogPhotoSlot(
+                    index = 0,
+                    label = "Foto 1 *",
+                    uri = viewModel.foundDogPhotoUris.getOrNull(0),
+                    validationState = viewModel.foundPhotoValidationStates.getOrNull(0) ?: PhotoValidationState.Idle,
+                    isRequired = true,
+                    onTap = {
+                        targetPhotoIndex = 0
+                        if (viewModel.foundDogPhotoUris.isEmpty()) {
+                            showPhotoTipDialog = true
+                        } else {
+                            imagePicker.launch("image/*")
+                        }
+                    },
+                    onRemove = null,
+                    modifier = Modifier.weight(1f)
+                )
+                FoundDogPhotoSlot(
+                    index = 1,
+                    label = "Foto 2",
+                    uri = viewModel.foundDogPhotoUris.getOrNull(1),
+                    validationState = viewModel.foundPhotoValidationStates.getOrNull(1) ?: PhotoValidationState.Idle,
+                    isRequired = false,
+                    isDisabled = viewModel.foundPhotoValidationStates.getOrNull(0) !is PhotoValidationState.Valid,
+                    onTap = {
+                        targetPhotoIndex = 1
+                        imagePicker.launch("image/*")
+                    },
+                    onRemove = { viewModel.removeFoundDogPhoto(1) },
+                    modifier = Modifier.weight(1f)
+                )
+                FoundDogPhotoSlot(
+                    index = 2,
+                    label = "Foto 3",
+                    uri = viewModel.foundDogPhotoUris.getOrNull(2),
+                    validationState = viewModel.foundPhotoValidationStates.getOrNull(2) ?: PhotoValidationState.Idle,
+                    isRequired = false,
+                    isDisabled = viewModel.foundDogPhotoUris.size < 2,
+                    onTap = {
+                        targetPhotoIndex = 2
+                        imagePicker.launch("image/*")
+                    },
+                    onRemove = { viewModel.removeFoundDogPhoto(2) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
             Spacer(modifier = Modifier.height(6.dp))
-            when (foundPhotoValidationState) {
-                is PhotoValidationState.Invalid -> {
+            val firstState = viewModel.foundPhotoValidationStates.getOrNull(0) ?: PhotoValidationState.Idle
+            when {
+                firstState is PhotoValidationState.Invalid -> {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = FoundInvalidRed, modifier = Modifier.size(14.dp))
+                        Icon(Icons.Default.ErrorOutline, null, tint = FoundInvalidRed, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text((foundPhotoValidationState as PhotoValidationState.Invalid).message, color = FoundInvalidRed, fontSize = 12.sp)
+                        Text(firstState.message, color = FoundInvalidRed, fontSize = 12.sp)
                     }
                 }
-                is PhotoValidationState.Valid -> {
+                firstState is PhotoValidationState.Valid -> {
+                    val validCount = viewModel.foundPhotoValidationStates.count { it is PhotoValidationState.Valid }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = FoundValidGreen, modifier = Modifier.size(14.dp))
+                        Icon(Icons.Default.CheckCircle, null, tint = FoundValidGreen, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Foto válida", color = FoundValidGreen, fontSize = 12.sp)
+                        Text(
+                            "$validCount foto${if (validCount > 1) "s" else ""} válida${if (validCount > 1) "s" else ""}",
+                            color = FoundValidGreen,
+                            fontSize = 12.sp
+                        )
                     }
                 }
                 else -> {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Warning, contentDescription = null, tint = Gold.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Warning, null, tint = Gold.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Solo 1 foto", color = Gold.copy(alpha = 0.7f), fontSize = 12.sp)
+                        Text("Foto principal obligatoria", color = Gold.copy(alpha = 0.7f), fontSize = 12.sp)
+                    }
+                }
+            }
+            viewModel.foundPhotoValidationStates.forEachIndexed { idx, state ->
+                if (idx > 0 && state is PhotoValidationState.Invalid) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.ErrorOutline, null, tint = FoundInvalidRed, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Foto ${idx + 1}: ${state.message}", color = FoundInvalidRed, fontSize = 12.sp)
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // ─── Tamaño (obligatorio) ─────────────────────────────────────────
             FoundDogChipGroup(
                 title = "Tamaño *",
                 options = listOf("Grande", "Mediano", "Pequeño"),
@@ -297,20 +319,19 @@ fun ReportFoundDogScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // ─── Color principal (obligatorio) ────────────────────────────────
             FoundDogChipGroup(
                 title = "Color principal *",
                 options = listOf("Negro", "Blanco", "Marrón", "Dorado/Amarillo", "Gris", "Atigrado", "Manchado/Pinto", "Otro"),
                 selected = viewModel.foundDogColor,
                 onSelect = { viewModel.foundDogColor = it; if (it != "Otro") viewModel.foundDogColorOther = "" },
                 otherValue = viewModel.foundDogColorOther,
-                onOtherChange = { viewModel.foundDogColorOther = it },
-                otherLabel = "Describe el color"
+                onOtherChange = { viewModel.foundDogColorOther = it.filter { c -> c.isLetter() || c == ' ' }.take(20) },
+                otherLabel = "Describe el color",
+                otherMaxLength = 20
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // ─── Sexo (opcional) ──────────────────────────────────────────────
             FoundDogChipGroup(
                 title = "Sexo (opcional)",
                 options = listOf("Macho", "Hembra"),
@@ -320,36 +341,29 @@ fun ReportFoundDogScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // ─── Señas particulares (opcional) ────────────────────────────────
             FoundDogTextField(
                 value = viewModel.foundDogSigns,
-                onValueChange = { viewModel.foundDogSigns = it },
+                onValueChange = { viewModel.foundDogSigns = it.take(150) },
                 label = "Señas particulares (opcional)",
                 icon = Icons.Default.Notes,
                 placeholder = "Ej: mancha en el ojo, collar azul, sin collar...",
                 maxLines = 3,
-                singleLine = false
+                singleLine = false,
+                maxLength = 150
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // ─── Datos del reportero ──────────────────────────────────────────
-            Text(
-                text = "Tus datos de contacto",
-                color = Gold,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-
+            Text(text = "Tus datos de contacto", color = Gold, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Spacer(modifier = Modifier.height(12.dp))
 
             FoundDogTextField(
                 value = reporterName,
-                onValueChange = { reporterName = it },
+                onValueChange = { reporterName = it.filter { c -> c.isLetter() || c == ' ' }.take(50) },
                 label = "Tu nombre *",
-                icon = Icons.Default.Person
+                icon = Icons.Default.Person,
+                maxLength = 50
             )
-
             Spacer(modifier = Modifier.height(12.dp))
 
             FoundDogTextField(
@@ -360,7 +374,6 @@ fun ReportFoundDogScreen(
                 keyboardType = KeyboardType.Phone,
                 tintGold = true
             )
-
             Spacer(modifier = Modifier.height(12.dp))
 
             FoundDogTextField(
@@ -374,19 +387,14 @@ fun ReportFoundDogScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // ─── Mensaje de error ─────────────────────────────────────────────
             if (matchState is UiState.Error) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(vertical = 4.dp)
                 ) {
-                    Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = ErrorRed, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.ErrorOutline, null, tint = ErrorRed, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = (matchState as UiState.Error).message,
-                        color = ErrorRed,
-                        fontSize = 13.sp
-                    )
+                    Text(text = (matchState as UiState.Error).message, color = ErrorRed, fontSize = 13.sp)
                 }
             }
 
@@ -395,8 +403,10 @@ fun ReportFoundDogScreen(
             // ─── Botón buscar coincidencias ───────────────────────────────────
             val isLoading = matchState is UiState.Loading
             val finalColorCheck = if (viewModel.foundDogColor == "Otro") viewModel.foundDogColorOther else viewModel.foundDogColor
+            val allPhotosReady = viewModel.foundPhotoValidationStates.isNotEmpty() &&
+                viewModel.foundPhotoValidationStates.all { it is PhotoValidationState.Valid }
             val canSubmit = !isLoading &&
-                foundPhotoValidationState is PhotoValidationState.Valid &&
+                allPhotosReady &&
                 viewModel.foundDogSize.isNotBlank() &&
                 finalColorCheck.isNotBlank() &&
                 reporterName.isNotBlank() &&
@@ -405,10 +415,9 @@ fun ReportFoundDogScreen(
 
             Button(
                 onClick = {
-                    if (viewModel.foundDogPhotoUri != null && foundPhotoValidationState is PhotoValidationState.Valid) {
+                    if (canSubmit) {
                         viewModel.matchFoundDog(
                             context = context,
-                            photoUri = viewModel.foundDogPhotoUri!!,
                             reporterName = reporterName,
                             reporterPhone = reporterPhone,
                             reporterEmail = reporterEmail
@@ -455,6 +464,119 @@ fun ReportFoundDogScreen(
     }
 }
 
+@Composable
+private fun FoundDogPhotoSlot(
+    index: Int,
+    label: String,
+    uri: android.net.Uri?,
+    validationState: PhotoValidationState,
+    isRequired: Boolean,
+    isDisabled: Boolean = false,
+    onTap: () -> Unit,
+    onRemove: (() -> Unit)?,
+    modifier: Modifier = Modifier
+) {
+    val borderBrush = when {
+        isDisabled -> Brush.horizontalGradient(listOf(Color.White.copy(alpha = 0.1f), Color.White.copy(alpha = 0.1f)))
+        validationState is PhotoValidationState.Valid -> Brush.horizontalGradient(listOf(FoundValidGreen, FoundValidGreen))
+        validationState is PhotoValidationState.Invalid -> Brush.horizontalGradient(listOf(FoundInvalidRed, FoundInvalidRed))
+        isRequired -> Brush.horizontalGradient(listOf(Gold, GoldLight))
+        else -> Brush.horizontalGradient(listOf(Gold.copy(alpha = 0.4f), GoldLight.copy(alpha = 0.4f)))
+    }
+
+    Box(
+        modifier = modifier
+            .aspectRatio(0.72f)
+            .clip(RoundedCornerShape(12.dp))
+            .border(1.5.dp, borderBrush, RoundedCornerShape(12.dp))
+            .background(if (isDisabled) DarkSurface.copy(alpha = 0.5f) else DarkSurface)
+            .then(if (!isDisabled) Modifier.clickable { onTap() } else Modifier),
+        contentAlignment = Alignment.Center
+    ) {
+        if (uri != null) {
+            AsyncImage(
+                model = uri,
+                contentDescription = "Foto $label",
+                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
+                contentScale = ContentScale.Crop
+            )
+            when (validationState) {
+                is PhotoValidationState.Loading -> {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = Gold, modifier = Modifier.size(28.dp), strokeWidth = 2.5.dp)
+                    }
+                }
+                is PhotoValidationState.Valid -> {
+                    Box(
+                        Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(5.dp)
+                            .background(FoundValidGreen, CircleShape)
+                            .padding(3.dp)
+                    ) {
+                        Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(12.dp))
+                    }
+                }
+                is PhotoValidationState.Invalid -> {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.ErrorOutline, null, tint = FoundInvalidRed, modifier = Modifier.size(28.dp))
+                    }
+                }
+                else -> {}
+            }
+            if (onRemove != null) {
+                Box(
+                    Modifier
+                        .align(Alignment.TopStart)
+                        .padding(5.dp)
+                        .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                        .clickable { onRemove() }
+                        .padding(3.dp)
+                ) {
+                    Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(12.dp))
+                }
+            }
+        } else {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(4.dp)
+            ) {
+                Icon(
+                    imageVector = if (isDisabled) Icons.Default.LockClock else Icons.Default.AddAPhoto,
+                    contentDescription = null,
+                    tint = if (isDisabled) Color.White.copy(alpha = 0.2f)
+                    else if (isRequired) Gold
+                    else Gold.copy(alpha = 0.5f),
+                    modifier = Modifier.size(28.dp)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = label,
+                    color = if (isDisabled) Color.White.copy(alpha = 0.2f)
+                    else if (isRequired) Gold
+                    else Color.White.copy(alpha = 0.45f),
+                    fontSize = 11.sp,
+                    fontWeight = if (isRequired) FontWeight.SemiBold else FontWeight.Normal,
+                    textAlign = TextAlign.Center
+                )
+                if (!isRequired && !isDisabled) {
+                    Text(text = "opcional", color = Color.White.copy(alpha = 0.3f), fontSize = 10.sp)
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FoundDogChipGroup(
@@ -464,7 +586,8 @@ private fun FoundDogChipGroup(
     onSelect: (String) -> Unit,
     otherValue: String = "",
     onOtherChange: ((String) -> Unit)? = null,
-    otherLabel: String = "Otro"
+    otherLabel: String = "Otro",
+    otherMaxLength: Int = Int.MAX_VALUE
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -510,7 +633,8 @@ private fun FoundDogChipGroup(
                     value = otherValue,
                     onValueChange = { onOtherChange?.invoke(it) },
                     label = otherLabel,
-                    icon = Icons.Default.Edit
+                    icon = Icons.Default.Edit,
+                    maxLength = otherMaxLength
                 )
             }
         }
@@ -527,31 +651,44 @@ private fun FoundDogTextField(
     tintGold: Boolean = false,
     maxLines: Int = 1,
     singleLine: Boolean = true,
-    placeholder: String = ""
+    placeholder: String = "",
+    maxLength: Int = Int.MAX_VALUE
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label, color = Color.White.copy(alpha = 0.6f)) },
-        placeholder = if (placeholder.isNotEmpty()) {
-            { Text(placeholder, color = Color.White.copy(alpha = 0.35f), fontSize = 13.sp) }
-        } else null,
-        leadingIcon = {
-            Icon(imageVector = icon, contentDescription = null, tint = Gold)
-        },
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        maxLines = maxLines,
-        singleLine = singleLine,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = Gold,
-            unfocusedBorderColor = if (tintGold) Gold.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.2f),
-            focusedTextColor = Color.White,
-            unfocusedTextColor = Color.White,
-            cursorColor = Gold,
-            focusedContainerColor = Color.White.copy(alpha = 0.05f),
-            unfocusedContainerColor = Color.White.copy(alpha = 0.03f)
+    Column(modifier = Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            label = { Text(label, color = Color.White.copy(alpha = 0.6f)) },
+            placeholder = if (placeholder.isNotEmpty()) {
+                { Text(placeholder, color = Color.White.copy(alpha = 0.35f), fontSize = 13.sp) }
+            } else null,
+            leadingIcon = {
+                Icon(imageVector = icon, contentDescription = null, tint = Gold)
+            },
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            maxLines = maxLines,
+            singleLine = singleLine,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Gold,
+                unfocusedBorderColor = if (tintGold) Gold.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.2f),
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                cursorColor = Gold,
+                focusedContainerColor = Color.White.copy(alpha = 0.05f),
+                unfocusedContainerColor = Color.White.copy(alpha = 0.03f)
+            )
         )
-    )
+        if (maxLength != Int.MAX_VALUE) {
+            Text(
+                text = "${value.length}/$maxLength",
+                color = if (value.length >= maxLength) FoundInvalidRed else Color.White.copy(alpha = 0.35f),
+                fontSize = 11.sp,
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .padding(end = 4.dp, top = 2.dp)
+            )
+        }
+    }
 }

@@ -42,6 +42,7 @@ data class MatchFoundDogResponse(
 data class OwnerMatchItemResponse(
     @SerializedName("report_id") val reportId: String,
     @SerializedName("found_dog_photo_url") val foundDogPhotoUrl: String,
+    @SerializedName("found_dog_photo_urls") val foundDogPhotoUrls: List<String> = emptyList(),
     @SerializedName("similarity_percent") val similarityPercent: Float,
     @SerializedName("reporter_name") val reporterName: String,
     @SerializedName("reporter_phone") val reporterPhone: String,
@@ -60,6 +61,7 @@ data class OwnerMatchesApiResponse(
 data class MyFoundReportItemResponse(
     @SerializedName("report_id") val reportId: String,
     @SerializedName("photo_url") val photoUrl: String,
+    @SerializedName("photo_urls") val photoUrls: List<String> = emptyList(),
     val status: String,
     @SerializedName("created_at") val createdAt: String,
     val size: String,
@@ -106,7 +108,7 @@ interface WoofApiService {
         @Part("owner_name") ownerName: RequestBody,
         @Part("owner_phone") ownerPhone: RequestBody,
         @Part("owner_email") ownerEmail: RequestBody,
-        @Part photo: MultipartBody.Part,
+        @Part photos: List<MultipartBody.Part>,
         @Part("size") size: RequestBody,
         @Part("color") color: RequestBody,
         @Part("breed") breed: RequestBody,
@@ -118,7 +120,7 @@ interface WoofApiService {
     @POST("api/v1/match-found-dog")
     suspend fun matchFoundDog(
         @Header("Authorization") token: String,
-        @Part photo: MultipartBody.Part,
+        @Part photos: List<MultipartBody.Part>,
         @Part("size") size: RequestBody,
         @Part("color") color: RequestBody,
         @Part("sex") sex: RequestBody,

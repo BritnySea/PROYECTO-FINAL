@@ -29,6 +29,7 @@ data class DogMatch(
 data class FoundDogMatchForOwner(
     val reportId: String = "",
     val foundDogPhotoUrl: String = "",
+    val foundDogPhotoUrls: List<String> = emptyList(),
     val similarityPercent: Float = 0f,
     val reporterName: String = "",
     val reporterPhone: String = "",

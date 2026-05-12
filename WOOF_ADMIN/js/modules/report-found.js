@@ -2,113 +2,42 @@ import { auth } from '../firebase-config.js'
 import { showToast } from './utils.js'
 import { waitForAdminState, currentUser, currentUserData } from './admin-state.js'
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE  = 'http://localhost:8000'
+const MAX_SLOTS = 3
 
-let selectedPhoto = null
-let selectedSize  = ''
-let selectedColor = ''
-let selectedSex   = ''
-let photoValidationState = 'idle'  // 'idle' | 'loading' | 'valid' | 'invalid'
-let _skipNextUploadClick = false   // evita que el click fantasma reabra el diálogo
+let selectedPhotos = [null, null, null]
+let photoStates    = ['idle', 'idle', 'idle']  // 'idle'|'loading'|'valid'|'invalid'
+let selectedSize   = ''
+let selectedColor  = ''
+let selectedSex    = ''
+let _skipNextClick = [false, false, false]
 
-// ── Refs (se resuelven en initReportFound) ────────────────────────────────
 let _nameInput, _phoneInput, _emailInput, _matchBtn
 
 export function initReportFound() {
-  // ── Foto ──────────────────────────────────────────────────────────────────
-  const photoInput          = document.getElementById('photo-input')
-  const uploadBox           = document.getElementById('upload-box')
-  const uploadPreview       = document.getElementById('upload-preview')
-  const uploadPlaceholder   = document.getElementById('upload-placeholder')
-  const photoError          = document.getElementById('photo-error')
-  const photoLoadingOverlay = document.getElementById('photo-loading-overlay')
-  const photoValidBadge     = document.getElementById('photo-valid-badge')
-  const photoChangeLabel    = document.getElementById('photo-change-label')
-  const photoErrorOverlay   = document.getElementById('photo-error-overlay')
-  const photoStatusRow      = document.getElementById('photo-status-row')
-
-  // ── Modal consejo de foto ─────────────────────────────────────────────────
+  // Tip modal compartido entre los 3 slots
   const photoTipOverlay  = document.getElementById('photo-tip-overlay')
   const photoTipCancel   = document.getElementById('photo-tip-cancel')
   const photoTipContinue = document.getElementById('photo-tip-continue')
 
-  // Interceptar clic en el recuadro → mostrar consejo primero
-  uploadBox.addEventListener('click', () => {
-    // Si venimos del botón "Entendido, continuar", ignorar este click fantasma
-    if (_skipNextUploadClick) { _skipNextUploadClick = false; return }
-    photoTipOverlay.classList.remove('hidden')
-  })
-
-  photoTipCancel.addEventListener('click', (e) => {
+  photoTipCancel.addEventListener('click', e => {
     e.stopPropagation()
     photoTipOverlay.classList.add('hidden')
   })
 
-  photoTipContinue.addEventListener('click', (e) => {
-    e.stopPropagation()  // evita que el click burbujee hasta el upload-box
+  photoTipContinue.addEventListener('click', e => {
+    e.stopPropagation()
+    const idx = parseInt(photoTipOverlay.dataset.slotIdx ?? '0')
     photoTipOverlay.classList.add('hidden')
-    _skipNextUploadClick = true  // protege contra el click fantasma que genera el navegador
-    setTimeout(() => photoInput.click(), 50)
+    _skipNextClick[idx] = true
+    setTimeout(() => document.getElementById(`photo-input-${idx + 1}`).click(), 50)
   })
 
-  // ── Selección de foto + validación con el backend ─────────────────────────
-  photoInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
+  for (let i = 0; i < MAX_SLOTS; i++) {
+    _initPhotoSlot(i, photoTipOverlay)
+  }
 
-    selectedPhoto = file
-    uploadPreview.src = URL.createObjectURL(file)
-    uploadPreview.style.display = 'block'
-    uploadPlaceholder.style.display = 'none'
-    photoError.textContent = ''
-    e.target.value = '' // permite re-seleccionar el mismo archivo
-
-    _setPhotoState('loading', photoLoadingOverlay, photoValidBadge,
-      photoChangeLabel, photoErrorOverlay, photoStatusRow, uploadBox)
-    _updateSubmitBtn()
-
-    try {
-      const token = await auth.currentUser.getIdToken()
-      const formData = new FormData()
-      formData.append('photo', file)
-
-      const res = await fetch(`${API_BASE}/api/v1/validate-found-photo`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData,
-      })
-
-      if (res.status === 409) {
-        const err = await res.json().catch(() => ({}))
-        const msg = err.detail || 'Esta foto ya fue reportada anteriormente.'
-        _setPhotoState('invalid', photoLoadingOverlay, photoValidBadge,
-          photoChangeLabel, photoErrorOverlay, photoStatusRow, uploadBox, msg)
-      } else if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        const msg = err.detail || 'Error al validar la foto.'
-        _setPhotoState('invalid', photoLoadingOverlay, photoValidBadge,
-          photoChangeLabel, photoErrorOverlay, photoStatusRow, uploadBox, msg)
-      } else {
-        const data = await res.json()
-        if (data.is_dog) {
-          _setPhotoState('valid', photoLoadingOverlay, photoValidBadge,
-            photoChangeLabel, photoErrorOverlay, photoStatusRow, uploadBox)
-        } else {
-          const msg = data.message || 'La foto no muestra un perro.'
-          _setPhotoState('invalid', photoLoadingOverlay, photoValidBadge,
-            photoChangeLabel, photoErrorOverlay, photoStatusRow, uploadBox, msg)
-        }
-      }
-    } catch {
-      _setPhotoState('invalid', photoLoadingOverlay, photoValidBadge,
-        photoChangeLabel, photoErrorOverlay, photoStatusRow, uploadBox,
-        'No se pudo conectar con el servidor para validar la foto.')
-    }
-
-    _updateSubmitBtn()
-  })
-
-  // ── Chips ─────────────────────────────────────────────────────────────────
+  // Chips
   _bindChips('chips-size', val => {
     selectedSize = val
     document.getElementById('size-error').textContent = ''
@@ -122,22 +51,41 @@ export function initReportFound() {
     document.getElementById('color-error').textContent = ''
     _updateSubmitBtn()
   })
+  document.getElementById('color-other').addEventListener('input', () => {
+    const el = document.getElementById('color-other')
+    const filtered = el.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]/g, '').slice(0, 20)
+    if (el.value !== filtered) el.value = filtered
+    const counter = document.getElementById('color-other-counter')
+    if (counter) {
+      counter.textContent = `${el.value.length}/20`
+      counter.style.color = el.value.length >= 20 ? '#E53935' : 'rgba(255,255,255,0.35)'
+    }
+    _updateSubmitBtn()
+  })
 
-  document.getElementById('color-other').addEventListener('input', _updateSubmitBtn)
+  document.getElementById('signs').addEventListener('input', () => {
+    const el = document.getElementById('signs')
+    const counter = document.getElementById('signs-counter')
+    if (counter) {
+      counter.textContent = `${el.value.length}/150`
+      counter.style.color = el.value.length >= 150 ? '#E53935' : 'rgba(255,255,255,0.35)'
+    }
+  })
 
-  // ── Campos de contacto ────────────────────────────────────────────────────
+  // Campos de contacto
   _nameInput  = document.getElementById('reporter-name')
   _phoneInput = document.getElementById('reporter-phone')
   _emailInput = document.getElementById('reporter-email')
   _matchBtn   = document.getElementById('btn-match')
 
-  // Auto-rellenar datos del perfil del administrador
   waitForAdminState().then(() => {
     const user = currentUser
     const data = currentUserData
-    if (data?.name  && !_nameInput.value)  _nameInput.value  = data.name
+    if (data?.name  && !_nameInput.value)  _nameInput.value  = data.name.slice(0, 50)
     if (user?.email && !_emailInput.value) _emailInput.value = user.email
     if (data?.phone && !_phoneInput.value) _phoneInput.value = data.phone
+    const counter = document.getElementById('reporter-name-counter')
+    if (counter) counter.textContent = `${_nameInput.value.length}/50`
     _updateSubmitBtn()
   })
 
@@ -149,6 +97,13 @@ export function initReportFound() {
   })
 
   _nameInput.addEventListener('input', () => {
+    const filtered = _nameInput.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]/g, '').slice(0, 50)
+    if (_nameInput.value !== filtered) _nameInput.value = filtered
+    const counter = document.getElementById('reporter-name-counter')
+    if (counter) {
+      counter.textContent = `${_nameInput.value.length}/50`
+      counter.style.color = _nameInput.value.length >= 50 ? '#E53935' : 'rgba(255,255,255,0.35)'
+    }
     document.getElementById('name-wrapper').classList.remove('error')
     document.getElementById('name-error').textContent = ''
     _updateSubmitBtn()
@@ -161,11 +116,10 @@ export function initReportFound() {
     _updateSubmitBtn()
   })
 
-  // ── Botón buscar coincidencias ────────────────────────────────────────────
   _matchBtn.disabled = true
 
   _matchBtn.addEventListener('click', async () => {
-    const { valid, finalColor } = _validateForm(_nameInput, _phoneInput, _emailInput)
+    const { valid, finalColor } = _validateForm()
     if (!valid) return
 
     _matchBtn.disabled = true
@@ -173,9 +127,14 @@ export function initReportFound() {
 
     try {
       const token = await auth.currentUser.getIdToken()
-
       const formData = new FormData()
-      formData.append('photo',          selectedPhoto)
+
+      selectedPhotos.forEach((photo, i) => {
+        if (photo && photoStates[i] === 'valid') {
+          formData.append('photos', photo)
+        }
+      })
+
       formData.append('size',           selectedSize)
       formData.append('color',          finalColor)
       formData.append('sex',            selectedSex)
@@ -195,8 +154,10 @@ export function initReportFound() {
         throw new Error(err.detail || `Error ${res.status}`)
       }
 
-      _showMatchResults(await res.json())
+      await res.json()
       _resetForm()
+      showToast('Reporte registrado. Revisa las coincidencias en la lista.', false)
+      document.querySelector('.nav-item[data-section="my-reports"]')?.click()
     } catch (err) {
       const msg = err.message.includes('fetch')
         ? '❌ No se pudo conectar con el servidor. Verifica que el backend esté corriendo.'
@@ -210,101 +171,106 @@ export function initReportFound() {
   })
 }
 
-// ── Resetea el formulario completo tras un envío exitoso ──────────────────
-function _resetForm() {
-  // Variables de estado
-  selectedPhoto        = null
-  selectedSize         = ''
-  selectedColor        = ''
-  selectedSex          = ''
-  photoValidationState = 'idle'
-  _skipNextUploadClick = false
-
-  // ── Foto ──────────────────────────────────────────────────────────────────
-  const uploadPreview       = document.getElementById('upload-preview')
-  const uploadPlaceholder   = document.getElementById('upload-placeholder')
-  const uploadBox           = document.getElementById('upload-box')
-  const photoLoadingOverlay = document.getElementById('photo-loading-overlay')
-  const photoValidBadge     = document.getElementById('photo-valid-badge')
-  const photoChangeLabel    = document.getElementById('photo-change-label')
-  const photoErrorOverlay   = document.getElementById('photo-error-overlay')
-  const photoStatusRow      = document.getElementById('photo-status-row')
-
-  uploadPreview.style.display = 'none'
-  uploadPreview.src = ''
-  uploadPlaceholder.style.display = ''
-  uploadBox.classList.remove('has-photo', 'valid-photo', 'error-photo')
-  photoLoadingOverlay.classList.add('hidden')
-  photoValidBadge.classList.add('hidden')
-  photoChangeLabel.classList.add('hidden')
-  photoErrorOverlay.classList.add('hidden')
-  document.getElementById('photo-error').textContent = ''
-
-  photoStatusRow.className = 'photo-status-row photo-status-row--hint'
-  photoStatusRow.innerHTML = `
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-      <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-    </svg>
-    <span>Solo 1 foto</span>`
-
-  // ── Chips ─────────────────────────────────────────────────────────────────
-  ;['chips-size', 'chips-color', 'chips-sex'].forEach(groupId => {
-    document.getElementById(groupId)
-      .querySelectorAll('.chip')
-      .forEach(c => c.classList.remove('selected'))
-  })
-  document.getElementById('color-other-wrapper').classList.add('hidden')
-  document.getElementById('color-other').value = ''
-
-  // ── Señas y errores ───────────────────────────────────────────────────────
-  document.getElementById('signs').value = ''
-  ;['size-error', 'color-error', 'name-error', 'phone-error', 'email-r-error'].forEach(id => {
-    const el = document.getElementById(id)
-    if (el) el.textContent = ''
-  })
-  ;['name-wrapper', 'phone-wrapper', 'email-r-wrapper'].forEach(id => {
-    document.getElementById(id)?.classList.remove('error')
-  })
-
-  // ── Datos de contacto: re-rellenar desde el perfil ────────────────────────
-  if (_nameInput)  _nameInput.value  = currentUserData?.name  || ''
-  if (_emailInput) _emailInput.value = currentUser?.email      || ''
-  if (_phoneInput) _phoneInput.value = currentUserData?.phone  || ''
-
-  _updateSubmitBtn()
+function _updateSlotLocks() {
+  const unlocked = selectedPhotos[0] !== null
+  for (let i = 1; i < MAX_SLOTS; i++) {
+    const overlay = document.getElementById(`photo-lock-overlay-${i + 1}`)
+    if (overlay) overlay.classList.toggle('hidden', unlocked)
+  }
 }
 
-// ── Actualiza enable/disable del botón en tiempo real ─────────────────────
-function _updateSubmitBtn() {
-  if (!_matchBtn) return
-  const finalColor = selectedColor === 'Otro'
-    ? (document.getElementById('color-other')?.value.trim() ?? '')
-    : selectedColor
+function _initPhotoSlot(idx, photoTipOverlay) {
+  const n          = idx + 1
+  const uploadBox  = document.getElementById(`upload-box-${n}`)
+  const photoInput = document.getElementById(`photo-input-${n}`)
 
-  const ready = photoValidationState === 'valid' &&
-    selectedSize !== '' &&
-    finalColor  !== '' &&
-    (_nameInput?.value.trim()  ?? '') !== '' &&
-    (_phoneInput?.value.trim() ?? '') !== '' &&
-    (_emailInput?.value.trim() ?? '') !== '' &&
-    _isValidEmail(_emailInput?.value.trim() ?? '')
+  uploadBox.addEventListener('click', () => {
+    if (idx > 0 && selectedPhotos[0] === null) {
+      showToast('Primero agrega la Foto 1 (obligatoria)', false)
+      return
+    }
+    if (_skipNextClick[idx]) { _skipNextClick[idx] = false; return }
+    if (idx === 0) {
+      photoTipOverlay.dataset.slotIdx = '0'
+      photoTipOverlay.classList.remove('hidden')
+      return
+    }
+    document.getElementById(`photo-input-${idx + 1}`).click()
+  })
 
-  _matchBtn.disabled = !ready
+  photoInput.addEventListener('change', async e => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    selectedPhotos[idx] = file
+    e.target.value = ''
+    if (idx === 0) _updateSlotLocks()
+
+    const preview     = document.getElementById(`upload-preview-${n}`)
+    const placeholder = document.getElementById(`upload-placeholder-${n}`)
+    const errText     = document.getElementById(`photo-error-${n}`)
+    const refs        = _slotRefs(n)
+
+    preview.src = URL.createObjectURL(file)
+    preview.style.display = 'block'
+    placeholder.style.display = 'none'
+    errText.textContent = ''
+
+    _setSlotState(idx, 'loading', refs)
+    _updateSubmitBtn()
+
+    try {
+      const token = await auth.currentUser.getIdToken()
+      const fd = new FormData()
+      fd.append('photo', file)
+
+      const res = await fetch(`${API_BASE}/api/v1/validate-found-photo`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: fd,
+      })
+
+      if (res.status === 409) {
+        const err = await res.json().catch(() => ({}))
+        _setSlotState(idx, 'invalid', refs, err.detail || 'Esta foto ya fue reportada anteriormente.')
+      } else if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        _setSlotState(idx, 'invalid', refs, err.detail || 'Error al validar la foto.')
+      } else {
+        const data = await res.json()
+        if (data.is_dog) {
+          _setSlotState(idx, 'valid', refs)
+        } else {
+          _setSlotState(idx, 'invalid', refs, data.message || 'La foto no muestra un perro.')
+        }
+      }
+    } catch {
+      _setSlotState(idx, 'invalid', refs, 'No se pudo conectar con el servidor.')
+    }
+
+    _updateSubmitBtn()
+  })
 }
 
-// ── Cambia el estado visual del recuadro de foto ──────────────────────────
-function _setPhotoState(state, loadingOverlay, validBadge, changeLabel, errorOverlay, statusRow, uploadBox, errorMsg = '') {
-  photoValidationState = state
+function _slotRefs(n) {
+  return {
+    loadingOverlay: document.getElementById(`photo-loading-overlay-${n}`),
+    validBadge:     document.getElementById(`photo-valid-badge-${n}`),
+    changeLabel:    document.getElementById(`photo-change-label-${n}`),
+    errorOverlay:   document.getElementById(`photo-error-overlay-${n}`),
+    statusRow:      document.getElementById(`photo-status-row-${n}`),
+    uploadBox:      document.getElementById(`upload-box-${n}`),
+  }
+}
 
-  // Limpiar todo
+function _setSlotState(idx, state, { loadingOverlay, validBadge, changeLabel, errorOverlay, statusRow, uploadBox }, errorMsg = '') {
+  photoStates[idx] = state
+
   loadingOverlay.classList.add('hidden')
   validBadge.classList.add('hidden')
   changeLabel.classList.add('hidden')
   errorOverlay.classList.add('hidden')
   uploadBox.classList.remove('has-photo', 'valid-photo', 'error-photo')
-
-  // Resetear status row
   statusRow.className = 'photo-status-row'
   statusRow.innerHTML = ''
 
@@ -312,11 +278,7 @@ function _setPhotoState(state, loadingOverlay, validBadge, changeLabel, errorOve
     uploadBox.classList.add('has-photo')
     loadingOverlay.classList.remove('hidden')
     statusRow.classList.add('photo-status-row--loading')
-    statusRow.innerHTML = `
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-      </svg>
-      <span>Verificando foto con el servidor...</span>`
+    statusRow.innerHTML = `<span>Verificando con el servidor...</span>`
 
   } else if (state === 'valid') {
     uploadBox.classList.add('valid-photo')
@@ -343,16 +305,129 @@ function _setPhotoState(state, loadingOverlay, validBadge, changeLabel, errorOve
   } else {
     // idle
     statusRow.classList.add('photo-status-row--hint')
-    statusRow.innerHTML = `
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-      </svg>
-      <span>Solo 1 foto</span>`
+    const label = idx === 0 ? 'Foto principal' : 'Foto adicional'
+    statusRow.innerHTML = `<span>${label}</span>`
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────
+function _resetForm() {
+  selectedPhotos   = [null, null, null]
+  photoStates      = ['idle', 'idle', 'idle']
+  selectedSize     = ''
+  selectedColor    = ''
+  selectedSex      = ''
+  _skipNextClick   = [false, false, false]
+
+  for (let i = 0; i < MAX_SLOTS; i++) {
+    const n = i + 1
+    const preview     = document.getElementById(`upload-preview-${n}`)
+    const placeholder = document.getElementById(`upload-placeholder-${n}`)
+
+    preview.style.display = 'none'
+    preview.src = ''
+    placeholder.style.display = ''
+
+    const refs = _slotRefs(n)
+    _setSlotState(i, 'idle', refs)
+  }
+
+  _updateSlotLocks()
+  document.getElementById('photo-error').textContent = ''
+
+  ;['chips-size', 'chips-color', 'chips-sex'].forEach(groupId => {
+    document.getElementById(groupId).querySelectorAll('.chip').forEach(c => c.classList.remove('selected'))
+  })
+  document.getElementById('color-other-wrapper').classList.add('hidden')
+  document.getElementById('color-other').value = ''
+  document.getElementById('signs').value = ''
+
+  ;['size-error', 'color-error', 'name-error', 'phone-error', 'email-r-error'].forEach(id => {
+    const el = document.getElementById(id)
+    if (el) el.textContent = ''
+  })
+  ;['name-wrapper', 'phone-wrapper', 'email-r-wrapper'].forEach(id => {
+    document.getElementById(id)?.classList.remove('error')
+  })
+
+  if (_nameInput)  _nameInput.value  = (currentUserData?.name  || '').slice(0, 50)
+  if (_emailInput) _emailInput.value = currentUser?.email      || ''
+  if (_phoneInput) _phoneInput.value = currentUserData?.phone  || ''
+
+  const nameC  = document.getElementById('reporter-name-counter')
+  const colorC = document.getElementById('color-other-counter')
+  const signsC = document.getElementById('signs-counter')
+  if (nameC)  { nameC.textContent  = `${_nameInput?.value.length ?? 0}/50`;  nameC.style.color  = 'rgba(255,255,255,0.35)' }
+  if (colorC) { colorC.textContent = '0/20'; colorC.style.color = 'rgba(255,255,255,0.35)' }
+  if (signsC) { signsC.textContent = '0/150'; signsC.style.color = 'rgba(255,255,255,0.35)' }
+
+  _updateSubmitBtn()
+}
+
+function _updateSubmitBtn() {
+  if (!_matchBtn) return
+  const finalColor = selectedColor === 'Otro'
+    ? (document.getElementById('color-other')?.value.trim() ?? '')
+    : selectedColor
+
+  const atLeastOneValid = photoStates[0] === 'valid'
+  const ready = atLeastOneValid &&
+    selectedSize !== '' &&
+    finalColor   !== '' &&
+    (_nameInput?.value.trim()  ?? '') !== '' &&
+    (_phoneInput?.value.trim() ?? '') !== '' &&
+    (_emailInput?.value.trim() ?? '') !== '' &&
+    _isValidEmail(_emailInput?.value.trim() ?? '')
+
+  _matchBtn.disabled = !ready
+}
+
+function _validateForm() {
+  let valid = true
+
+  if (photoStates[0] !== 'valid') {
+    document.getElementById('photo-error').textContent = 'La foto principal (Foto 1) debe ser válida antes de continuar'
+    valid = false
+  } else {
+    document.getElementById('photo-error').textContent = ''
+  }
+
+  if (!selectedSize) {
+    document.getElementById('size-error').textContent = 'Selecciona el tamaño'
+    valid = false
+  }
+
+  const finalColor = selectedColor === 'Otro'
+    ? document.getElementById('color-other').value.trim()
+    : selectedColor
+  if (!finalColor) {
+    document.getElementById('color-error').textContent = 'Selecciona o describe el color'
+    valid = false
+  }
+
+  if (!_nameInput.value.trim()) {
+    document.getElementById('name-wrapper').classList.add('error')
+    document.getElementById('name-error').textContent = 'El nombre es requerido'
+    valid = false
+  }
+  if (!_phoneInput.value.trim()) {
+    document.getElementById('phone-wrapper').classList.add('error')
+    document.getElementById('phone-error').textContent = 'El teléfono es requerido'
+    valid = false
+  }
+  const emailVal = _emailInput.value.trim()
+  if (!emailVal) {
+    document.getElementById('email-r-wrapper').classList.add('error')
+    document.getElementById('email-r-error').textContent = 'El correo es requerido'
+    valid = false
+  } else if (!_isValidEmail(emailVal)) {
+    document.getElementById('email-r-wrapper').classList.add('error')
+    document.getElementById('email-r-error').textContent = 'Formato de correo no válido'
+    valid = false
+  }
+
+  return { valid, finalColor }
+}
+
 function _bindChips(groupId, onChange) {
   document.getElementById(groupId).querySelectorAll('.chip').forEach(chip => {
     chip.addEventListener('click', () => {
@@ -380,86 +455,3 @@ function _validateEmail(input) {
   }
 }
 
-function _validateForm(nameInput, phoneInput, emailInput) {
-  let valid = true
-
-  if (photoValidationState !== 'valid') {
-    document.getElementById('photo-error').textContent = 'La foto debe ser válida antes de continuar'
-    valid = false
-  }
-  if (!selectedSize) {
-    document.getElementById('size-error').textContent = 'Selecciona el tamaño'
-    valid = false
-  }
-  const finalColor = selectedColor === 'Otro'
-    ? document.getElementById('color-other').value.trim()
-    : selectedColor
-  if (!finalColor) {
-    document.getElementById('color-error').textContent = 'Selecciona o describe el color'
-    valid = false
-  }
-  if (!nameInput.value.trim()) {
-    document.getElementById('name-wrapper').classList.add('error')
-    document.getElementById('name-error').textContent = 'El nombre es requerido'
-    valid = false
-  }
-  if (!phoneInput.value.trim()) {
-    document.getElementById('phone-wrapper').classList.add('error')
-    document.getElementById('phone-error').textContent = 'El teléfono es requerido'
-    valid = false
-  }
-  const emailVal = emailInput.value.trim()
-  if (!emailVal) {
-    document.getElementById('email-r-wrapper').classList.add('error')
-    document.getElementById('email-r-error').textContent = 'El correo es requerido'
-    valid = false
-  } else if (!_isValidEmail(emailVal)) {
-    document.getElementById('email-r-wrapper').classList.add('error')
-    document.getElementById('email-r-error').textContent = 'Formato de correo no válido'
-    valid = false
-  }
-
-  return { valid, finalColor }
-}
-
-function _showMatchResults(data) {
-  const matches    = data.matches || []
-  const resultsDiv = document.getElementById('match-results')
-  const titleEl    = document.getElementById('match-title')
-  const cardsEl    = document.getElementById('match-cards')
-
-  resultsDiv.classList.remove('hidden')
-
-  if (matches.length === 0) {
-    titleEl.textContent = 'Sin coincidencias encontradas'
-    cardsEl.innerHTML = '<p class="empty-state" style="padding:20px 0">No se encontraron perros perdidos que coincidan con la foto.</p>'
-    return
-  }
-
-  titleEl.textContent = `${matches.length} coincidencia${matches.length !== 1 ? 's' : ''} encontrada${matches.length !== 1 ? 's' : ''}`
-  cardsEl.innerHTML = ''
-
-  matches.forEach(m => {
-    const card = document.createElement('div')
-    card.className = 'match-card'
-    card.innerHTML = `
-      ${m.photo_url
-        ? `<img class="dog-card-photo" src="${m.photo_url}" alt="${m.name}" loading="lazy" />`
-        : `<div class="dog-card-photo-placeholder">🐾</div>`
-      }
-      <div class="match-card-body">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px">
-          <p class="match-card-name">${m.name || 'Sin nombre'}</p>
-          <span class="match-percent">${Math.round(m.similarity_percent)}%</span>
-        </div>
-        <p class="match-card-contact">
-          📞 ${m.owner_phone || '—'}<br>
-          ✉️ ${m.owner_email || '—'}
-        </p>
-      </div>
-    `
-    cardsEl.appendChild(card)
-  })
-
-  resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}

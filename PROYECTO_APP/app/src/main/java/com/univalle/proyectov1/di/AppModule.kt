@@ -17,6 +17,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 @Module
@@ -43,6 +44,9 @@ object AppModule {
         }
         return OkHttpClient.Builder()
             .addInterceptor(logging)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(120, TimeUnit.SECONDS)
+            .writeTimeout(120, TimeUnit.SECONDS)
             .build()
     }
 
@@ -52,7 +56,7 @@ object AppModule {
         // Para emulador: http://10.0.2.2:8000/
         // Para dispositivo real: IP local de la PC en la misma red WiFi (ver con ipconfig)
         return Retrofit.Builder()
-            .baseUrl("http://192.168.0.21:8000/")
+            .baseUrl("http://10.240.120.216:8000/")
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

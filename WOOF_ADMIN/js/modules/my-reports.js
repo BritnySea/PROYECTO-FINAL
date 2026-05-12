@@ -1,9 +1,11 @@
 import { db } from '../firebase-config.js'
 import {
-  collection, query, where, getDocs, doc, updateDoc,
+  collection, query, where, getDocs, doc, getDoc, updateDoc,
+  serverTimestamp, deleteField,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js'
 import { waitForAdminState, currentUser } from './admin-state.js'
 import { showToast } from './utils.js'
+import { _buildMatchCard, _openMatchLightbox } from './found-reports.js'
 
 // ── Estado ────────────────────────────────────────────────────────────────────
 let allMyReports       = []
@@ -166,11 +168,31 @@ export function initMyReports() {
       const collName = report.type === 'lost' ? 'lost_dogs' : 'found_dog_reports'
       const updateData = { status: newStatus }
       if (reason) updateData.deactivation_reason = reason
+      if (report.type === 'found') {
+        if (newStatus === 'inactive') {
+          updateData.deactivated_at = serverTimestamp()
+          if (reason === 'Fue devuelto al dueño') updateData.returned_to_owner = true
+        } else {
+          updateData.deactivated_at = deleteField()
+          updateData.returned_to_owner = deleteField()
+        }
+      }
       await updateDoc(doc(db, collName, report.id), updateData)
 
+      const now = new Date()
       report.status = newStatus
+      if (report.type === 'found') {
+        if (newStatus === 'inactive') report.deactivated_at = { toDate: () => now }
+        else { delete report.deactivated_at; delete report.returned_to_owner }
+      }
       const cached = allMyReports.find(r => r.id === report.id)
-      if (cached) cached.status = newStatus
+      if (cached) {
+        cached.status = newStatus
+        if (report.type === 'found') {
+          if (newStatus === 'inactive') cached.deactivated_at = { toDate: () => now }
+          else { delete cached.deactivated_at; delete cached.returned_to_owner }
+        }
+      }
 
       document.getElementById('my-reason-overlay').classList.add('hidden')
       showToast(newStatus === 'active' ? '✅ Publicación activada' : '✅ Publicación desactivada', false)
@@ -313,12 +335,15 @@ function _buildMyCard(data) {
 
   const isLost   = data.type === 'lost'
   const isActive = _isActive(data)
-  const photoUrl = data.photo_url || data.found_dog_photo_url || ''
+  const photoUrl = data.photo_url || data.found_dog_photo_url_1 || data.found_dog_photo_url || ''
   const typeLabel = isLost ? '🔴 Perro extraviado' : '🔵 Perro encontrado'
   const typeColor = isLost ? '#CE93D8' : '#90CAF9'
   const size  = data.size  || data.tamaño || ''
   const color = data.color || ''
   const sex   = data.sex   || data.sexo   || ''
+  const matchCount = !isLost && Array.isArray(data.matches)
+    ? data.matches.filter(m => (m.similarity_percent ?? 0) >= 50).length
+    : null
 
   const details = [
     size  && `📏 ${size}`,
@@ -338,7 +363,10 @@ function _buildMyCard(data) {
         ${details ? details + '<br>' : ''}
         📅 ${date}
       </p>
-      <span class="dog-card-tag ${isActive ? 'tag-active' : 'tag-inactive'}">${isActive ? 'Activo' : 'Inactivo'}</span>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px">
+        <span class="dog-card-tag ${isActive ? 'tag-active' : 'tag-inactive'}">${isActive ? 'Activo' : 'Inactivo'}</span>
+        ${matchCount !== null ? `<span class="dog-card-tag tag-match">${matchCount} coincidencia${matchCount !== 1 ? 's' : ''}</span>` : ''}
+      </div>
     </div>
   `
   return card
@@ -350,19 +378,55 @@ function _buildMyCard(data) {
 function openMyModal(data) {
   currentModalReport = data
 
-  const isLost   = data.type === 'lost'
-  const photoUrl = data.photo_url || data.found_dog_photo_url || ''
+  const isLost = data.type === 'lost'
 
-  // Foto
+  // Recopilar todas las fotos
+  const allUrls = (() => {
+    if (isLost) {
+      const urls = []
+      for (let i = 1; i <= 3; i++) {
+        if (data[`photo_url_${i}`]) urls.push(data[`photo_url_${i}`])
+      }
+      return urls.length > 0 ? urls : (data.photo_url ? [data.photo_url] : [])
+    } else {
+      const urls = []
+      for (let i = 1; i <= 3; i++) {
+        if (data[`found_dog_photo_url_${i}`]) urls.push(data[`found_dog_photo_url_${i}`])
+      }
+      return urls.length > 0 ? urls : (data.found_dog_photo_url ? [data.found_dog_photo_url] : [])
+    }
+  })()
+
+  // Foto principal + miniaturas
   const photoEl       = document.getElementById('my-modal-photo')
   const placeholderEl = document.getElementById('my-modal-placeholder')
-  if (photoUrl) {
-    photoEl.src = photoUrl
+  const thumbsEl      = document.getElementById('my-modal-thumbs')
+
+  if (allUrls.length > 0) {
+    photoEl.src = allUrls[0]
     photoEl.classList.remove('hidden')
     placeholderEl.classList.add('hidden')
+    if (allUrls.length > 1) {
+      thumbsEl.classList.remove('hidden')
+      thumbsEl.innerHTML = allUrls.map((url, i) => `
+        <img class="dog-modal-thumb ${i === 0 ? 'active' : ''}"
+             src="${url}" alt="Foto ${i + 1}" data-url="${url}" />
+      `).join('')
+      thumbsEl.querySelectorAll('.dog-modal-thumb').forEach(thumb => {
+        thumb.addEventListener('click', () => {
+          photoEl.src = thumb.dataset.url
+          thumbsEl.querySelectorAll('.dog-modal-thumb').forEach(t => t.classList.toggle('active', t === thumb))
+        })
+      })
+    } else {
+      thumbsEl.classList.add('hidden')
+      thumbsEl.innerHTML = ''
+    }
   } else {
     photoEl.classList.add('hidden')
     placeholderEl.classList.remove('hidden')
+    thumbsEl.classList.add('hidden')
+    thumbsEl.innerHTML = ''
   }
 
   // Encabezado
@@ -415,6 +479,32 @@ function openMyModal(data) {
       <p class="dog-modal-field-value">${f.value}</p>
     </div>
   `).join('')
+
+  // Sección de coincidencias (solo para reportes de encontrados)
+  const matchesSection = document.getElementById('my-modal-matches-section')
+  const matchesTitle   = document.getElementById('my-modal-matches-title')
+  const matchesEl      = document.getElementById('my-modal-matches')
+
+  if (!isLost) {
+    const allMatches = Array.isArray(data.matches) ? data.matches : []
+    const matches = allMatches.filter(m => (m.similarity_percent ?? 0) >= 50)
+    matchesSection.classList.remove('hidden')
+    matchesTitle.textContent = `Posibles coincidencias (${matches.length})`
+    if (matches.length === 0) {
+      matchesEl.innerHTML = '<p class="empty-state" style="font-size:13px">Sin coincidencias registradas</p>'
+    } else {
+      matchesEl.innerHTML = '<p class="empty-state" style="font-size:13px">Cargando...</p>'
+      Promise.all(matches.map(m => _buildMatchCard(m))).then(cards => {
+        matchesEl.innerHTML = ''
+        cards.forEach(el => matchesEl.appendChild(el))
+      }).catch(() => {
+        matchesEl.innerHTML = '<p class="empty-state" style="font-size:13px">Error al cargar coincidencias</p>'
+      })
+    }
+  } else {
+    matchesSection.classList.add('hidden')
+    matchesEl.innerHTML = ''
+  }
 
   document.getElementById('my-modal-overlay').classList.remove('hidden')
   document.body.style.overflow = 'hidden'

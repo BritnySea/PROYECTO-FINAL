@@ -2,10 +2,14 @@ package com.univalle.proyectov1.ui.dogs
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -21,6 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.univalle.proyectov1.feature.dogs.domain.model.Dog
 import com.univalle.proyectov1.feature.dogs.domain.model.FoundDogMatchForOwner
@@ -39,6 +44,8 @@ fun MatchResultsScreen(
     var selectedDog by remember { mutableStateOf<Dog?>(null) }
     var dropdownExpanded by remember { mutableStateOf(false) }
     var selectedMatch by remember { mutableStateOf<FoundDogMatchForOwner?>(null) }
+    var galleryPhotos by remember { mutableStateOf<List<String>>(emptyList()) }
+    var galleryIndex by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) {
         viewModel.loadMyDogs()
@@ -99,7 +106,7 @@ fun MatchResultsScreen(
                     onExpandedChange = { dropdownExpanded = it }
                 ) {
                     OutlinedTextField(
-                        value = selectedDog?.name ?: "Seleccionar perro...",
+                        value = selectedDog?.name?.uppercase() ?: "Seleccionar perro...",
                         onValueChange = {},
                         readOnly = true,
                         trailingIcon = {
@@ -128,7 +135,7 @@ fun MatchResultsScreen(
                     ) {
                         myDogs.forEach { dog ->
                             DropdownMenuItem(
-                                text = { Text(dog.name, color = Color.White, fontSize = 14.sp) },
+                                text = { Text(dog.name.uppercase(), color = Color.White, fontSize = 14.sp) },
                                 onClick = { selectedDog = dog; dropdownExpanded = false },
                                 leadingIcon = {
                                     Icon(Icons.Default.Pets, contentDescription = null, tint = Gold, modifier = Modifier.size(18.dp))
@@ -195,7 +202,13 @@ fun MatchResultsScreen(
                                 OwnerMatchCard(
                                     match = match,
                                     lostDogPhotoUrl = selectedDog!!.photoUrl,
-                                    onClick = { selectedMatch = match }
+                                    onClick = { selectedMatch = match },
+                                    onFoundPhotoClick = {
+                                        galleryPhotos = match.foundDogPhotoUrls.ifEmpty {
+                                            listOfNotNull(match.foundDogPhotoUrl.ifBlank { null })
+                                        }
+                                        galleryIndex = 0
+                                    }
                                 )
                             }
                             item { Spacer(modifier = Modifier.height(100.dp)) }
@@ -211,7 +224,22 @@ fun MatchResultsScreen(
         OwnerMatchDetailDialog(
             match = match,
             lostDogPhotoUrl = selectedDog?.photoUrl ?: "",
-            onDismiss = { selectedMatch = null }
+            onDismiss = { selectedMatch = null },
+            onFoundPhotoClick = {
+                galleryPhotos = match.foundDogPhotoUrls.ifEmpty {
+                    listOfNotNull(match.foundDogPhotoUrl.ifBlank { null })
+                }
+                galleryIndex = 0
+            }
+        )
+    }
+
+    // ─── Galería pantalla completa ─────────────────────────────────────────────
+    if (galleryPhotos.isNotEmpty()) {
+        FoundDogPhotoGallery(
+            photos = galleryPhotos,
+            initialIndex = galleryIndex,
+            onDismiss = { galleryPhotos = emptyList() }
         )
     }
 }
@@ -222,13 +250,15 @@ fun MatchResultsScreen(
 private fun OwnerMatchCard(
     match: FoundDogMatchForOwner,
     lostDogPhotoUrl: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onFoundPhotoClick: () -> Unit
 ) {
     val simColor = when {
         match.similarityPercent >= 80f -> Color(0xFF4CAF50)
         match.similarityPercent >= 50f -> Gold
         else -> Color.White.copy(alpha = 0.7f)
     }
+    val photoCount = match.foundDogPhotoUrls.size.takeIf { it > 1 }
 
     Surface(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
@@ -260,7 +290,27 @@ private fun OwnerMatchCard(
                 Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Encontrado", color = Color.White.copy(alpha = 0.5f), fontSize = 11.sp)
                     Spacer(modifier = Modifier.height(4.dp))
-                    MatchDogPhoto(url = match.foundDogPhotoUrl, size = 90.dp)
+                    Box {
+                        MatchDogPhoto(
+                            url = match.foundDogPhotoUrl,
+                            size = 90.dp,
+                            onClick = onFoundPhotoClick
+                        )
+                        if (photoCount != null) {
+                            Surface(
+                                modifier = Modifier.align(Alignment.TopEnd).padding(3.dp),
+                                shape = CircleShape,
+                                color = Color.Black.copy(alpha = 0.7f)
+                            ) {
+                                Text(
+                                    text = "1/$photoCount",
+                                    color = Color.White,
+                                    fontSize = 9.sp,
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -300,7 +350,8 @@ private fun OwnerMatchCard(
 private fun OwnerMatchDetailDialog(
     match: FoundDogMatchForOwner,
     lostDogPhotoUrl: String,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onFoundPhotoClick: () -> Unit
 ) {
     val simColor = when {
         match.similarityPercent >= 80f -> Color(0xFF4CAF50)
@@ -333,7 +384,28 @@ private fun OwnerMatchDetailDialog(
                     Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Perro encontrado", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
                         Spacer(modifier = Modifier.height(6.dp))
-                        MatchDogPhoto(url = match.foundDogPhotoUrl, size = 120.dp)
+                        val photoCount = match.foundDogPhotoUrls.size.takeIf { it > 1 }
+                        Box {
+                            MatchDogPhoto(
+                                url = match.foundDogPhotoUrl,
+                                size = 120.dp,
+                                onClick = onFoundPhotoClick
+                            )
+                            if (photoCount != null) {
+                                Surface(
+                                    modifier = Modifier.align(Alignment.TopEnd).padding(3.dp),
+                                    shape = CircleShape,
+                                    color = Color.Black.copy(alpha = 0.7f)
+                                ) {
+                                    Text(
+                                        text = "$photoCount fotos",
+                                        color = Color.White,
+                                        fontSize = 9.sp,
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -396,20 +468,116 @@ private fun OwnerMatchDetailDialog(
 // ─── Componentes auxiliares ───────────────────────────────────────────────────
 
 @Composable
-private fun MatchDogPhoto(url: String, size: androidx.compose.ui.unit.Dp) {
+private fun MatchDogPhoto(
+    url: String,
+    size: androidx.compose.ui.unit.Dp,
+    onClick: (() -> Unit)? = null
+) {
+    val modifier = Modifier
+        .size(size)
+        .clip(RoundedCornerShape(12.dp))
+        .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
+
     if (url.isNotBlank()) {
         AsyncImage(
             model = url,
             contentDescription = null,
-            modifier = Modifier.size(size).clip(RoundedCornerShape(12.dp)),
+            modifier = modifier,
             contentScale = ContentScale.Crop
         )
     } else {
         Box(
-            modifier = Modifier.size(size).clip(RoundedCornerShape(12.dp)).background(DarkBackground),
+            modifier = modifier.background(DarkBackground),
             contentAlignment = Alignment.Center
         ) {
             Text("🐕", fontSize = (size.value * 0.4f).sp)
+        }
+    }
+}
+
+@Composable
+private fun FoundDogPhotoGallery(
+    photos: List<String>,
+    initialIndex: Int,
+    onDismiss: () -> Unit
+) {
+    var currentIndex by remember { mutableIntStateOf(initialIndex) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+        ) {
+            // Foto principal
+            AsyncImage(
+                model = photos[currentIndex],
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.Center),
+                contentScale = ContentScale.Fit
+            )
+
+            // Botón cerrar
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+            ) {
+                Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = Color.White)
+            }
+
+            // Contador
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(16.dp),
+                shape = RoundedCornerShape(8.dp),
+                color = Color.Black.copy(alpha = 0.5f)
+            ) {
+                Text(
+                    text = "Foto ${currentIndex + 1} de ${photos.size}",
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                )
+            }
+
+            // Miniaturas
+            if (photos.size > 1) {
+                LazyRow(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 24.dp)
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    itemsIndexed(photos) { index, url ->
+                        val isSelected = index == currentIndex
+                        AsyncImage(
+                            model = url,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(60.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { currentIndex = index }
+                                .then(
+                                    if (isSelected) Modifier.border(
+                                        2.dp, Gold, RoundedCornerShape(8.dp)
+                                    ) else Modifier
+                                ),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
+            }
         }
     }
 }

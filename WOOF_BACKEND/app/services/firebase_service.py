@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import cloudinary
 import cloudinary.uploader
@@ -56,6 +56,7 @@ def save_lost_dog(dog_data: dict) -> str:
 def get_active_found_reports() -> list[dict]:
     """Devuelve reportes de perros encontrados activos que tengan embedding guardado.
     Documentos sin campo 'status' se consideran activos (reportes anteriores a la migración).
+    Soporta tanto formato antiguo (embedding único) como nuevo (embeddings lista).
     """
     if _db is None:
         raise RuntimeError("Firebase no inicializado. Llama initialize_firebase() primero.")
@@ -67,10 +68,10 @@ def get_active_found_reports() -> list[dict]:
     for doc in docs:
         total += 1
         data = doc.to_dict()
-        # Sin campo status → reporte antiguo → se trata como activo
         if data.get("status", "active") != "active":
             continue
-        if data.get("embedding"):
+        has_embedding = bool(data.get("embedding")) or bool(data.get("embedding_1"))
+        if has_embedding:
             data["doc_id"] = doc.id
             results.append(data)
 
@@ -94,6 +95,33 @@ def get_active_lost_dogs() -> list[dict]:
         results.append(data)
 
     return results
+
+
+def get_user_role(uid: str) -> str:
+    """Devuelve el rol del usuario ('USER' o 'ADMIN'). Por defecto 'USER'."""
+    if _db is None:
+        return "USER"
+    doc = _db.collection("users").document(uid).get()
+    if doc.exists:
+        return doc.to_dict().get("role", "USER")
+    return "USER"
+
+
+def count_weekly_reports(uid: str) -> int:
+    """Cuenta solo los reportes de perros PERDIDOS que el usuario hizo en la semana actual (lunes–domingo UTC).
+    Los reportes de perros encontrados no tienen límite semanal."""
+    if _db is None:
+        return 0
+    now = datetime.now(timezone.utc)
+    week_start = (now - timedelta(days=now.weekday())).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+
+    lost_docs = _db.collection("lost_dogs").where("registered_by_uid", "==", uid).stream()
+    return sum(
+        1 for doc in lost_docs
+        if (ts := doc.to_dict().get("created_at")) and ts >= week_start
+    )
 
 
 def get_user_fcm_token(uid: str) -> str | None:
@@ -151,9 +179,20 @@ def get_matches_for_dog(dog_id: str, top_k: int = 5) -> list[dict]:
         created_at = data.get("created_at")
         reported_at = created_at.strftime("%Y-%m-%d %H:%M") if created_at else ""
 
+        found_photo_urls = []
+        for i in range(1, 4):
+            url = data.get(f"found_dog_photo_url_{i}")
+            if url:
+                found_photo_urls.append(url)
+        if not found_photo_urls:
+            fallback = data.get("found_dog_photo_url", "")
+            if fallback:
+                found_photo_urls.append(fallback)
+
         results.append({
             "report_id": doc.id,
-            "found_dog_photo_url": data.get("found_dog_photo_url", ""),
+            "found_dog_photo_url": found_photo_urls[0] if found_photo_urls else "",
+            "found_dog_photo_urls": found_photo_urls,
             "similarity_percent": similarity,
             "reporter_name": data.get("reporter_name", ""),
             "reporter_phone": data.get("reporter_phone", ""),
@@ -184,9 +223,20 @@ def get_my_found_reports(uid: str) -> list[dict]:
         data = doc.to_dict()
         created_at = data.get("created_at")
         created_at_str = created_at.strftime("%Y-%m-%dT%H:%M:%S") if created_at else ""
+        photo_urls = []
+        for i in range(1, 4):
+            url = data.get(f"found_dog_photo_url_{i}")
+            if url:
+                photo_urls.append(url)
+        if not photo_urls:
+            url = data.get("found_dog_photo_url", "")
+            if url:
+                photo_urls.append(url)
+
         results.append({
             "report_id": doc.id,
-            "photo_url": data.get("found_dog_photo_url", ""),
+            "photo_url": photo_urls[0] if photo_urls else "",
+            "photo_urls": photo_urls,
             "status": data.get("status", "active"),
             "created_at": created_at_str,
             "size": data.get("size", ""),

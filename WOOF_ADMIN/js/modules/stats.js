@@ -1,6 +1,6 @@
 import { db, auth } from '../firebase-config.js'
 import {
-  collection, getDocs,
+  collection, getDocs, query, where,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js'
 import {
   onAuthStateChanged,
@@ -275,6 +275,86 @@ function _renderUsersStatus(active, blocked) {
   } catch (e) { console.warn('chart-users-status:', e) }
 }
 
+// ── Gráfico: distribución de permanencia ─────────────────────────────────────
+function _renderPermanencia(foundReports, adminUid) {
+  try {
+    const ctx = document.getElementById('chart-permanencia')
+    if (!ctx) return
+
+    const now = new Date()
+    const buckets = [
+      { label: '1-7 días',   min: 0,  max: 7 },
+      { label: '8-15 días',  min: 8,  max: 15 },
+      { label: '16-30 días', min: 16, max: 30 },
+      { label: '31-60 días', min: 31, max: 60 },
+      { label: '+60 días',   min: 61, max: Infinity },
+    ]
+    const activeCount   = new Array(buckets.length).fill(0)
+    const resolvedCount = new Array(buckets.length).fill(0)
+
+    foundReports
+      .filter(r => r.found_by_uid === adminUid)
+      .forEach(r => {
+        const start = r.created_at?.toDate?.()
+        if (!start) return
+        const isActive   = !r.status || r.status === 'active'
+        const isResolved = r.returned_to_owner === true ||
+          r.deactivation_reason === 'Fue devuelto al dueño' ||
+          r.deactivation_reason === 'El perro ya fue entregado a su dueño'
+        if (!isActive && !isResolved) return
+        const end  = r.deactivated_at?.toDate?.() ?? now
+        const days = Math.max(1, Math.round((end - start) / (1000 * 60 * 60 * 24)))
+        const bi   = buckets.findIndex(b => days >= b.min && days <= b.max)
+        if (bi === -1) return
+        if (isActive) activeCount[bi]++
+        else resolvedCount[bi]++
+      })
+
+    _charts.permanencia = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: buckets.map(b => b.label),
+        datasets: [
+          {
+            label: 'Aún buscando (activo)',
+            data: activeCount,
+            backgroundColor: C.goldA, borderColor: C.gold,
+            borderWidth: 1.5, borderRadius: 6, borderSkipped: false,
+          },
+          {
+            label: 'Devuelto al dueño',
+            data: resolvedCount,
+            backgroundColor: C.greenA, borderColor: C.green,
+            borderWidth: 1.5, borderRadius: 6, borderSkipped: false,
+          },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        animation: { duration: 700, easing: 'easeOutQuart' },
+        plugins: {
+          legend: _legendTop,
+          tooltip: {
+            ..._tooltip,
+            callbacks: {
+              label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y} perro${ctx.parsed.y !== 1 ? 's' : ''}`,
+            },
+          },
+        },
+        scales: {
+          x: { grid: _grid, ticks: _tick, stacked: false },
+          y: {
+            grid: _grid,
+            ticks: { ..._tick, stepSize: 1 },
+            beginAtZero: true,
+            title: { display: true, text: 'Cantidad de reportes', color: 'rgba(255,255,255,0.45)', font: { size: 11 } },
+          },
+        },
+      },
+    })
+  } catch (e) { console.warn('chart-permanencia:', e) }
+}
+
 // ── Carga principal ───────────────────────────────────────────────────────────
 export async function loadDashboard() {
   if (!_refreshBound) {
@@ -329,7 +409,7 @@ export async function loadDashboard() {
   let users = [], lostDogs = [], foundReports = []
 
   try {
-    const snap = await getDocs(collection(db, 'users'))
+    const snap = await getDocs(query(collection(db, 'users'), where('role', '==', 'USER')))
     users = snap.docs.map(d => ({ id: d.id, ...d.data() }))
   } catch (e) { console.warn('Leer users:', e.message) }
 
@@ -369,14 +449,28 @@ export async function loadDashboard() {
   const withMatches = foundReports.filter(r => (r.matches?.filter(m => (m.similarity_percent ?? 0) >= 50).length ?? 0) > 0).length
   const matchRate   = totalFound > 0 ? Math.round((withMatches / totalFound) * 100) : 0
 
-  _kpiData = { totalUsers, blockedUsers, activeLost, inactiveLost, activeFound, inactiveFound, totalFound, totalMatches, matchRate, totalResolved }
+  // Permanencia promedio: reportes de encontrados del refugio (admin) que ya fueron cerrados
+  const dogsWithPermanencia = foundReports.filter(d =>
+    d.found_by_uid === user.uid &&
+    d.deactivated_at?.toDate?.() &&
+    d.created_at?.toDate?.()
+  )
+  const avgPermanencia = dogsWithPermanencia.length > 0
+    ? Math.round(
+        dogsWithPermanencia.reduce((sum, d) => {
+          return sum + (d.deactivated_at.toDate() - d.created_at.toDate()) / (1000 * 60 * 60 * 24)
+        }, 0) / dogsWithPermanencia.length
+      )
+    : 0
 
-  _animateCount('kpi-users',       totalUsers)
-  _animateCount('kpi-blocked',     blockedUsers)
-  _animateCount('kpi-lost-active', activeLost)
-  _animateCount('kpi-found',       totalFound)
-  _animateCount('kpi-matches',     totalMatches)
-  _animateCount('kpi-resolved',    totalResolved)
+  _kpiData = { totalUsers, blockedUsers, activeLost, inactiveLost, activeFound, inactiveFound, totalFound, totalMatches, matchRate, totalResolved, avgPermanencia, permanenciaCount: dogsWithPermanencia.length }
+
+  _animateCount('kpi-users',            totalUsers)
+  _animateCount('kpi-blocked',          blockedUsers)
+  _animateCount('kpi-lost-active',      activeLost)
+  _animateCount('kpi-found',            totalFound)
+  _animateCount('kpi-matches',          totalMatches)
+  _animateCount('kpi-resolved',         totalResolved)
   _animatePercent('kpi-match-rate', matchRate)
 
   // ── Gráficos ──────────────────────────────────────────────────────────────────
@@ -390,6 +484,7 @@ export async function loadDashboard() {
   _renderStatusLost(activeLost, inactiveLost)
   _renderStatusFound(activeFound, inactiveFound)
   _renderUsersStatus(activeUsers, blockedUsers)
+  _renderPermanencia(foundReports, user.uid)
 }
 
 // ── Generador de PDF del Dashboard ───────────────────────────────────────────
@@ -445,6 +540,10 @@ function _generateDashboardPDF() {
       ['Reportes de encontrados',     String(_kpiData.totalFound    ?? 'N/A')],
       ['Coincidencias IA >=50%',      String(_kpiData.totalMatches  ?? 'N/A')],
       ['Casos resueltos',             String(_kpiData.totalResolved ?? 'N/A')],
+      [
+        `Permanencia promedio en refugio (${_kpiData.permanenciaCount ?? 0} caso(s) cerrados)`,
+        _kpiData.permanenciaCount > 0 ? `${_kpiData.avgPermanencia} día(s)` : 'Sin datos',
+      ],
     ],
     styles:            { fontSize: 10, cellPadding: 4 },
     headStyles:        { fillColor: DARK, textColor: GOLD, fontStyle: 'bold' },
@@ -505,6 +604,29 @@ function _generateDashboardPDF() {
       ctxD.drawImage(d.canvas, 0, 0)
       doc.addImage(tmpD.toDataURL('image/png'), 'PNG', x, yC + 5, donutW, donutH)
     })
+  }
+
+  // ── Grafico de permanencia ────────────────────────────────────────────────
+  const permCanvas = document.getElementById('chart-permanencia')
+  if (permCanvas) {
+    doc.addPage()
+    let yP = 20
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(12)
+    doc.setTextColor(...DARK)
+    doc.text('Permanencia en el Refugio', 14, yP)
+    yP += 6
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8.5)
+    doc.setTextColor(...GRAY)
+    doc.text('Solo tus reportes registrados  |  Dorado = aun activo  |  Verde = devuelto al dueno', 14, yP)
+    yP += 7
+    const tmpP = document.createElement('canvas')
+    tmpP.width = permCanvas.width; tmpP.height = permCanvas.height
+    const ctxP = tmpP.getContext('2d')
+    ctxP.fillStyle = '#1A1A1A'; ctxP.fillRect(0, 0, tmpP.width, tmpP.height)
+    ctxP.drawImage(permCanvas, 0, 0)
+    doc.addImage(tmpP.toDataURL('image/png'), 'PNG', 14, yP, 182, 100)
   }
 
   // ── Nueva pagina para tablas de datos ─────────────────────────────────────

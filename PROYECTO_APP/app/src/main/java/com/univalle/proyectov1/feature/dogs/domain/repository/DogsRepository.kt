@@ -18,7 +18,7 @@ interface DogsRepository {
         ownerName: String,
         ownerPhone: String,
         ownerEmail: String,
-        photo: File,
+        photos: List<File>,
         size: String = "",
         color: String = "",
         breed: String = "",
@@ -27,7 +27,7 @@ interface DogsRepository {
     ): Result<String>
 
     suspend fun matchFoundDog(
-        photo: File,
+        photos: List<File>,
         size: String = "",
         color: String = "",
         sex: String = "",

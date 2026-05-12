@@ -1,6 +1,6 @@
 import { db } from '../firebase-config.js'
 import {
-  collection, getDocs, doc, getDoc, updateDoc,
+  collection, getDocs, doc, getDoc, updateDoc, serverTimestamp, deleteField,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js'
 import { auth } from '../firebase-config.js'
 import {
@@ -169,11 +169,25 @@ export function initFoundReports() {
     try {
       const updateData = { status: newStatus }
       if (reason) updateData.deactivation_reason = reason
+      if (newStatus === 'inactive') {
+        updateData.deactivated_at = serverTimestamp()
+        if (reason === 'El perro ya fue entregado a su dueño') updateData.returned_to_owner = true
+      } else {
+        updateData.deactivated_at = deleteField()
+        updateData.returned_to_owner = deleteField()
+      }
       await updateDoc(doc(db, 'found_dog_reports', report.id), updateData)
 
+      const now = new Date()
       report.status = newStatus
+      if (newStatus === 'inactive') report.deactivated_at = { toDate: () => now }
+      else delete report.deactivated_at
       const cached = allFoundReports.find(r => r.id === report.id)
-      if (cached) cached.status = newStatus
+      if (cached) {
+        cached.status = newStatus
+        if (newStatus === 'inactive') cached.deactivated_at = { toDate: () => now }
+        else delete cached.deactivated_at
+      }
 
       document.getElementById('found-reason-overlay').classList.add('hidden')
 
@@ -304,8 +318,8 @@ function _buildFoundCard(id, data) {
   ].filter(Boolean).join('&emsp;')
 
   card.innerHTML = `
-    ${data.found_dog_photo_url
-      ? `<img class="dog-card-photo" src="${data.found_dog_photo_url}" alt="Perro encontrado" loading="lazy" />`
+    ${(data.found_dog_photo_url_1 || data.found_dog_photo_url)
+      ? `<img class="dog-card-photo" src="${data.found_dog_photo_url_1 || data.found_dog_photo_url}" alt="Perro encontrado" loading="lazy" />`
       : `<div class="dog-card-photo-placeholder">🐾</div>`
     }
     <div class="dog-card-body">
@@ -332,13 +346,35 @@ async function openFoundModal(data) {
 
   const photoEl       = document.getElementById('found-modal-photo')
   const placeholderEl = document.getElementById('found-modal-placeholder')
-  if (data.found_dog_photo_url) {
-    photoEl.src = data.found_dog_photo_url
+  const thumbsEl      = document.getElementById('found-modal-thumbs')
+  const allUrls = (() => {
+    const urls = []
+    for (let i = 1; i <= 3; i++) {
+      if (data[`found_dog_photo_url_${i}`]) urls.push(data[`found_dog_photo_url_${i}`])
+    }
+    return urls.length > 0 ? urls : (data.found_dog_photo_url ? [data.found_dog_photo_url] : [])
+  })()
+
+  if (allUrls.length > 0) {
+    photoEl.src = allUrls[0]
     photoEl.classList.remove('hidden')
     placeholderEl.classList.add('hidden')
+    if (allUrls.length > 1) {
+      thumbsEl.classList.remove('hidden')
+      thumbsEl.innerHTML = allUrls.map((url, i) => `
+        <img class="dog-modal-thumb ${i === 0 ? 'active' : ''}"
+             src="${url}" alt="Foto ${i + 1}"
+             onclick="_selectFoundPhoto(event,'${url}')" />
+      `).join('')
+    } else {
+      thumbsEl.classList.add('hidden')
+      thumbsEl.innerHTML = ''
+    }
   } else {
     photoEl.classList.add('hidden')
     placeholderEl.classList.remove('hidden')
+    thumbsEl.classList.add('hidden')
+    thumbsEl.innerHTML = ''
   }
 
   _refreshModalStatusUI(_isActive(data))
@@ -357,6 +393,16 @@ async function openFoundModal(data) {
     data.description    && { icon: '📝', label: 'Señas particulares', value: data.description },
                            { icon: '📅', label: 'Fecha del reporte',  value: date },
   ].filter(Boolean)
+
+  // Permanencia en found report
+  const deactivatedDate = data.deactivated_at?.toDate?.()
+  const createdDate     = data.created_at?.toDate?.()
+  if (deactivatedDate && createdDate) {
+    const diffDays = Math.round((deactivatedDate - createdDate) / (1000 * 60 * 60 * 24))
+    const closedStr = deactivatedDate.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
+    const label = data.returned_to_owner ? 'Permanencia hasta entrega al dueño' : 'Permanencia hasta cierre'
+    fields.push({ icon: '⏱️', label, value: `${diffDays} día${diffDays !== 1 ? 's' : ''} (cerrado: ${closedStr})` })
+  }
 
   document.getElementById('found-modal-fields').innerHTML = fields.map(f => `
     <div class="dog-modal-field">
@@ -387,7 +433,7 @@ async function openFoundModal(data) {
   document.body.style.overflow = 'hidden'
 }
 
-async function _buildMatchCard(match) {
+export async function _buildMatchCard(match) {
   const card = document.createElement('div')
   card.className = 'found-match-card'
 
@@ -400,15 +446,37 @@ async function _buildMatchCard(match) {
   const similarity = match.similarity_percent ?? 0
   const colorClass = similarity >= 80 ? 'sim-high' : similarity >= 50 ? 'sim-mid' : 'sim-low'
 
+  // Recopilar todas las fotos del perro perdido
+  const lostPhotoUrls = []
+  if (dogData) {
+    for (let i = 1; i <= 3; i++) {
+      const url = dogData[`photo_url_${i}`]
+      if (url) lostPhotoUrls.push(url)
+    }
+    if (lostPhotoUrls.length === 0 && dogData.photo_url) {
+      lostPhotoUrls.push(dogData.photo_url)
+    }
+  }
+
   card.innerHTML = `
     <div class="found-match-photos">
       <div class="found-match-photo-wrap">
-        ${dogData?.photo_url
-          ? `<img src="${dogData.photo_url}" alt="${dogData.name || 'Perro perdido'}" class="found-match-photo" />`
+        ${lostPhotoUrls.length > 0
+          ? `<img src="${lostPhotoUrls[0]}" alt="${dogData?.name || 'Perro perdido'}"
+                  class="found-match-photo found-match-photo--clickable"
+                  data-photos-idx="0" />`
           : `<div class="found-match-photo-placeholder">🐾</div>`
         }
         <span class="found-match-photo-label">Perdido</span>
       </div>
+      ${lostPhotoUrls.length > 1 ? `
+        <div class="found-match-thumbs">
+          ${lostPhotoUrls.map((url, i) => `
+            <img src="${url}" class="found-match-thumb ${i === 0 ? 'active' : ''}"
+                 data-photos-idx="${i}" />
+          `).join('')}
+        </div>
+      ` : ''}
     </div>
     <div class="found-match-info">
       <div class="found-match-sim ${colorClass}">${similarity.toFixed(1)}% similitud</div>
@@ -427,7 +495,83 @@ async function _buildMatchCard(match) {
       ` : `<p style="font-size:12px; color:var(--muted)">Datos del perro no disponibles</p>`}
     </div>
   `
+
+  // Listeners para foto principal y miniaturas
+  if (lostPhotoUrls.length > 0) {
+    const mainImg = card.querySelector('.found-match-photo--clickable')
+    if (mainImg) mainImg.addEventListener('click', () => _openMatchLightbox(lostPhotoUrls, 0))
+
+    card.querySelectorAll('.found-match-thumb').forEach(thumb => {
+      const idx = parseInt(thumb.dataset.photosIdx, 10)
+      thumb.addEventListener('click', () => {
+        // Actualiza foto principal en la tarjeta
+        const main = card.querySelector('.found-match-photo--clickable')
+        if (main) main.src = lostPhotoUrls[idx]
+        card.querySelectorAll('.found-match-thumb').forEach(t => t.classList.toggle('active', t === thumb))
+        // Abre el visor
+        _openMatchLightbox(lostPhotoUrls, idx)
+      })
+    })
+  }
+
   return card
+}
+
+// ── Visor de fotos del perro perdido ─────────────────────────────────────────
+let _mlPhotos = []
+let _mlIndex  = 0
+
+function _ensureMatchLightbox() {
+  if (document.getElementById('match-lightbox')) return
+  const el = document.createElement('div')
+  el.id = 'match-lightbox'
+  el.className = 'match-lightbox hidden'
+  el.innerHTML = `
+    <button class="match-lightbox-close" id="match-lightbox-close">✕</button>
+    <div class="match-lightbox-counter" id="match-lightbox-counter"></div>
+    <img class="match-lightbox-img" id="match-lightbox-img" />
+    <div class="match-lightbox-thumbs" id="match-lightbox-thumbs"></div>
+  `
+  document.body.appendChild(el)
+  document.getElementById('match-lightbox-close').addEventListener('click', _closeMatchLightbox)
+  el.addEventListener('click', e => { if (e.target === el) _closeMatchLightbox() })
+}
+
+export function _openMatchLightbox(photos, index) {
+  _ensureMatchLightbox()
+  _mlPhotos = photos
+  _mlIndex  = index
+  _renderMatchLightbox()
+  document.getElementById('match-lightbox').classList.remove('hidden')
+  document.body.style.overflow = 'hidden'
+}
+
+function _renderMatchLightbox() {
+  document.getElementById('match-lightbox-img').src = _mlPhotos[_mlIndex]
+  document.getElementById('match-lightbox-counter').textContent =
+    _mlPhotos.length > 1 ? `Foto ${_mlIndex + 1} de ${_mlPhotos.length}` : ''
+
+  const thumbsEl = document.getElementById('match-lightbox-thumbs')
+  if (_mlPhotos.length > 1) {
+    thumbsEl.innerHTML = _mlPhotos.map((url, i) => `
+      <img src="${url}" class="match-lightbox-thumb ${i === _mlIndex ? 'active' : ''}"
+           data-i="${i}" />
+    `).join('')
+    thumbsEl.querySelectorAll('.match-lightbox-thumb').forEach(t => {
+      t.addEventListener('click', () => {
+        _mlIndex = parseInt(t.dataset.i, 10)
+        _renderMatchLightbox()
+      })
+    })
+  } else {
+    thumbsEl.innerHTML = ''
+  }
+}
+
+function _closeMatchLightbox() {
+  const el = document.getElementById('match-lightbox')
+  if (el) el.classList.add('hidden')
+  document.body.style.overflow = ''
 }
 
 function closeFoundModal() {
@@ -573,4 +717,11 @@ function _generatePDF() {
   }
 
   doc.save(`perros-encontrados-${now.toISOString().slice(0, 10)}.pdf`)
+}
+
+// ── Galería multi-foto ────────────────────────────────────────────────────────
+window._selectFoundPhoto = function (e, url) {
+  document.getElementById('found-modal-photo').src = url
+  document.querySelectorAll('#found-modal-thumbs .dog-modal-thumb')
+    .forEach(t => t.classList.toggle('active', t.getAttribute('src') === url || t.onclick?.toString().includes(url)))
 }

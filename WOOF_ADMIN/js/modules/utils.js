@@ -25,8 +25,8 @@ export function buildDogCard(id, data) {
   const statusClass = isActive ? 'tag-active' : 'tag-inactive'
 
   card.innerHTML = `
-    ${data.photo_url
-      ? `<img class="dog-card-photo" src="${data.photo_url}" alt="${data.name || ''}" loading="lazy" />`
+    ${(data.photo_url_1 || data.photo_url)
+      ? `<img class="dog-card-photo" src="${data.photo_url_1 || data.photo_url}" alt="${data.name || ''}" loading="lazy" />`
       : `<div class="dog-card-photo-placeholder">🐾</div>`
     }
     <div class="dog-card-body">
