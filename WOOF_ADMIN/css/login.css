@@ -346,8 +346,34 @@
 
 /* ── Responsive móvil ── */
 @media (max-width: 768px) {
-  .login-wrapper { flex-direction: column; overflow-y: auto; height: auto; min-height: 100vh; }
-  .left-panel    { width: 100%; padding: 36px 24px; min-height: unset; }
-  .right-panel   { padding: 32px 24px 60px; }
-  .left-title    { font-size: 26px; }
+  .login-wrapper  { flex-direction: column; overflow-y: auto; height: auto; min-height: 100vh; }
+
+  /* Panel izquierdo → barra compacta horizontal */
+  .left-panel {
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px;
+    text-align: left;
+    border-right: none;
+    border-bottom: 1px solid rgba(212,175,55,0.14);
+    min-height: unset;
+  }
+  .left-panel::before  { display: none; }
+  .logo-circle         { width: 42px; height: 42px; margin-bottom: 0; flex-shrink: 0; }
+  .left-subtitle       { font-size: 9px; margin-bottom: 1px; }
+  .left-title          { font-size: 16px; }
+  .left-divider,
+  .restricted-icon,
+  .restricted-label,
+  .restricted-sub      { display: none; }
+
+  .right-panel { padding: 32px 24px 60px; }
+}
+
+@media (max-width: 400px) {
+  .right-panel  { padding: 28px 18px 48px; }
+  .form-heading { font-size: 26px; }
 }
