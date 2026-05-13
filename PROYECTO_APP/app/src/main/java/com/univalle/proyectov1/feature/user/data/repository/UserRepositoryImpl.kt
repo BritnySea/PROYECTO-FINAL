@@ -56,6 +56,9 @@ class UserRepositoryImpl @Inject constructor(
             }
             firestoreListener = db.collection("users").document(uid)
                 .addSnapshotListener { snapshot, _ ->
+                    // Ignorar eventos del caché local para evitar falsos positivos
+                    // cuando el usuario inicia sesión después de ser desbloqueado
+                    if (snapshot?.metadata?.isFromCache == true) return@addSnapshotListener
                     trySend(snapshot?.getBoolean("isBlocked") ?: false)
                 }
         }

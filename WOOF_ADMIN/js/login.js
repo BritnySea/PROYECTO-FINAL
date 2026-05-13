@@ -151,8 +151,13 @@ async function handleLogin() {
       return
     }
 
-    // Login correcto → redirigir al dashboard
-    window.location.href = 'dashboard.html'
+    // Registrar esta pestaña como sesión activa
+    const tabId = crypto.randomUUID()
+    sessionStorage.setItem('woofTabId', tabId)
+    localStorage.setItem('woofActiveTab', tabId)
+
+    // Login correcto → replace para que login no quede en el historial
+    window.location.replace('dashboard.html')
 
   } catch (err) {
     const code = err.code
@@ -224,6 +229,25 @@ async function handleResetPassword() {
   }
 }
 
+// ── Mensaje de razón de cierre de sesión ────────────────────────────────────
+;(() => {
+  const reason = sessionStorage.getItem('woofLogoutReason')
+  if (!reason) return
+  sessionStorage.removeItem('woofLogoutReason')
+  const msgs = {
+    inactividad: '⏱️ Sesión cerrada por inactividad.',
+    otro_tab:    '⚠️ Sesión cerrada: el panel fue abierto en otra ventana.',
+  }
+  setTimeout(() => showToast(msgs[reason] || 'Sesión cerrada.', reason !== 'inactividad'), 300)
+})()
+
+// Detectar restauración desde bfcache (botón adelante desde dashboard)
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted && auth.currentUser) {
+    window.location.replace('dashboard.html')
+  }
+})
+
 // ── Si ya hay sesión activa de admin → ir directo al dashboard ───────────────
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
@@ -235,7 +259,7 @@ onAuthStateChanged(auth, async (user) => {
   try {
     const snap = await getDoc(doc(db, 'users', user.uid))
     if (snap.exists() && snap.data().role === 'ADMIN') {
-      window.location.href = 'dashboard.html'
+      window.location.replace('dashboard.html')
     } else {
       await signOut(auth)
     }

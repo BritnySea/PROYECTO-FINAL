@@ -4,6 +4,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.userProfileChangeRequest
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
 import com.univalle.proyectov1.feature.auth.domain.model.User
 import com.univalle.proyectov1.feature.auth.domain.repository.AuthRepository
 import kotlinx.coroutines.tasks.await
@@ -44,7 +45,7 @@ class AuthRepositoryImpl(
             val firebaseUser = auth.currentUser
             if (firebaseUser != null && firebaseUser.isEmailVerified) {
                 val uid = firebaseUser.uid
-                val userDoc = db.collection("users").document(uid).get().await()
+                val userDoc = db.collection("users").document(uid).get(Source.SERVER).await()
 
                 if (userDoc.exists() && userDoc.getBoolean("isBlocked") == true) {
                     auth.signOut()
@@ -76,7 +77,7 @@ class AuthRepositoryImpl(
 
             // Si es la primera vez que entra con Google, lo guardamos en la base de datos
             val uid = result.user?.uid ?: throw Exception("Error al obtener UID de Google")
-            val userDoc = db.collection("users").document(uid).get().await()
+            val userDoc = db.collection("users").document(uid).get(Source.SERVER).await()
 
             if (userDoc.exists() && userDoc.getBoolean("isBlocked") == true) {
                 auth.signOut()

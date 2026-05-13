@@ -6,6 +6,16 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
+    ],
+    "headers": [
+      {
+        "source": "index.html",
+        "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, private" }]
+      },
+      {
+        "source": "dashboard.html",
+        "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, private" }]
+      }
     ]
   }
 }
