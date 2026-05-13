@@ -28,6 +28,13 @@ class DogsRepositoryImpl @Inject constructor(
     private val db: FirebaseFirestore
 ) : DogsRepository {
 
+    private fun File.mimeType(): String = when (extension.lowercase()) {
+        "jpg", "jpeg" -> "image/jpeg"
+        "png"         -> "image/png"
+        "webp"        -> "image/webp"
+        else          -> "image/jpeg"
+    }
+
     private suspend fun getBearerToken(): String {
         val token = auth.currentUser?.getIdToken(false)?.await()?.token
             ?: error("Usuario no autenticado")
@@ -37,7 +44,7 @@ class DogsRepositoryImpl @Inject constructor(
     override suspend fun validateLostPhoto(photo: File): Result<String> {
         return try {
             val token = getBearerToken()
-            val photoBody = photo.asRequestBody("image/*".toMediaTypeOrNull())
+            val photoBody = photo.asRequestBody(photo.mimeType().toMediaTypeOrNull())
             val photoPart = MultipartBody.Part.createFormData("photo", photo.name, photoBody)
             val response = api.validateLostPhoto(token = token, photo = photoPart)
             if (response.isDog) Result.success(response.message)
@@ -52,7 +59,7 @@ class DogsRepositoryImpl @Inject constructor(
     override suspend fun validateFoundPhoto(photo: File): Result<String> {
         return try {
             val token = getBearerToken()
-            val photoBody = photo.asRequestBody("image/*".toMediaTypeOrNull())
+            val photoBody = photo.asRequestBody(photo.mimeType().toMediaTypeOrNull())
             val photoPart = MultipartBody.Part.createFormData("photo", photo.name, photoBody)
             val response = api.validateFoundPhoto(token = token, photo = photoPart)
             if (response.isDog) Result.success(response.message)
@@ -80,7 +87,7 @@ class DogsRepositoryImpl @Inject constructor(
         return try {
             val token = getBearerToken()
             val photoParts = photos.map { file ->
-                val body = file.asRequestBody("image/*".toMediaTypeOrNull())
+                val body = file.asRequestBody(file.mimeType().toMediaTypeOrNull())
                 MultipartBody.Part.createFormData("photos", file.name, body)
             }
             val response = api.registerLostDog(
@@ -118,7 +125,7 @@ class DogsRepositoryImpl @Inject constructor(
         return try {
             val token = getBearerToken()
             val photoParts = photos.map { file ->
-                val body = file.asRequestBody("image/*".toMediaTypeOrNull())
+                val body = file.asRequestBody(file.mimeType().toMediaTypeOrNull())
                 MultipartBody.Part.createFormData("photos", file.name, body)
             }
             val response = api.matchFoundDog(

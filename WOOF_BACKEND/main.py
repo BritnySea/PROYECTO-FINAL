@@ -49,6 +49,8 @@ _BASE_ORIGINS = [
     "http://127.0.0.1:5500",
     "https://proyectov1-15.web.app",
     "https://proyectov1-15.firebaseapp.com",
+    "https://refugiowoof.web.app",
+    "https://refugiowoof.firebaseapp.com",
 ]
 
 def _build_origins() -> list[str]:

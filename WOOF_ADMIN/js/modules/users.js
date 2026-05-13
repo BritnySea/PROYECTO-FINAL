@@ -134,7 +134,7 @@ async function openUserModal(u) {
     lostSnap.forEach(d => {
       const data = d.data()
       lostContainer.appendChild(_buildMiniCard({
-        photoUrl : data.photo_url,
+        photoUrl : data.photo_url_1 || data.photo_url,
         title    : data.name || 'Sin nombre',
         lines    : [
           data.breed       ? `🐕 ${data.breed}` : null,
@@ -160,7 +160,7 @@ async function openUserModal(u) {
       const data = d.data()
       const matchCount = Array.isArray(data.matches) ? data.matches.length : 0
       foundContainer.appendChild(_buildMiniCard({
-        photoUrl  : data.found_dog_photo_url,
+        photoUrl  : data.found_dog_photo_url_1 || data.found_dog_photo_url,
         title     : 'Perro encontrado',
         lines     : [
           data.color       ? `🎨 ${data.color}`  : null,
