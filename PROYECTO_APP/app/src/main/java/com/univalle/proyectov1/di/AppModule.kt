@@ -61,7 +61,7 @@ object AppModule {
         // Para emulador: http://10.0.2.2:8000/
         // Para dispositivo real: IP local de la PC en la misma red WiFi (ver con ipconfig)
         return Retrofit.Builder()
-            .baseUrl("http://192.168.0.20:8000/")
+            .baseUrl("https://refugiowoof.up.railway.app/")
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
