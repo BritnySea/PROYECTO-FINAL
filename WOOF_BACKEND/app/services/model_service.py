@@ -1,44 +1,51 @@
+import io
+import os
+import urllib.request
+
 import numpy as np
 from PIL import Image, ImageEnhance, ImageFilter
-import io
 import tensorflow as tf
-from tensorflow.keras.applications.efficientnet import preprocess_input
 
 from app.config import get_settings
 
 # Singleton references
 _full_model      = None
 _embedding_model = None
-_combined_model  = None   # outputs clasificación + embedding en un solo forward pass
 
 NOT_A_DOG_INDEX = 83
 CONFIDENCE_THRESHOLD = 0.20
 IMAGE_SIZE = (380, 380)
 
 
+def _download_model_if_needed(model_path: str, download_url: str) -> None:
+    """Descarga el modelo desde download_url si no existe en model_path."""
+    if os.path.exists(model_path):
+        return
+    if not download_url:
+        raise FileNotFoundError(
+            f"Modelo no encontrado en '{model_path}' y MODEL_DOWNLOAD_URL no está configurada."
+        )
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+    print(f"Descargando modelo desde Firebase Storage ({model_path})...")
+    urllib.request.urlretrieve(download_url, model_path)
+    print("Modelo descargado correctamente.")
+
+
 def load_model() -> None:
-    global _full_model, _embedding_model, _combined_model
+    global _full_model, _embedding_model
 
     settings = get_settings()
     model_path = settings.model_path
 
-    _full_model = tf.keras.models.load_model(model_path)
+    _download_model_if_needed(model_path, settings.model_download_url)
+
+    _full_model = tf.keras.models.load_model(model_path, compile=False)
 
     # Embedding model: salida de la penúltima capa (antes del Dense final)
     _embedding_model = tf.keras.Model(
         inputs=_full_model.input,
         outputs=_full_model.layers[-2].output,
     )
-
-    # Modelo combinado: devuelve clasificación Y embedding en un solo predict()
-    # Evita hacer dos forward passes separados sobre la misma imagen
-    _combined_model = tf.keras.Model(
-        inputs=_full_model.input,
-        outputs=[_full_model.output, _full_model.layers[-2].output],
-    )
-
-    print(f"[model_service] Model loaded from '{model_path}'")
-    print(f"[model_service] Embedding size: {_embedding_model.output_shape}")
 
 
 def is_model_loaded() -> bool:
@@ -82,32 +89,8 @@ def _preprocess_image(image_bytes: bytes) -> np.ndarray:
     canvas.paste(image, (offset_x, offset_y))
 
     array = np.array(canvas, dtype=np.float32)
-    array = preprocess_input(array)
+    array = tf.keras.applications.efficientnet.preprocess_input(array)
     return np.expand_dims(array, axis=0)
-
-
-def is_dog(image_bytes: bytes) -> tuple[bool, float]:
-    if _full_model is None:
-        raise RuntimeError("Model is not loaded. Call load_model() first.")
-
-    preprocessed = _preprocess_image(image_bytes)
-    predictions = _full_model.predict(preprocessed, verbose=0)
-    probs = predictions[0]
-
-    max_class = int(np.argmax(probs))
-    confidence = float(probs[max_class])
-
-    dog_detected = (max_class != NOT_A_DOG_INDEX) and (confidence >= CONFIDENCE_THRESHOLD)
-    return dog_detected, confidence
-
-
-def get_embedding(image_bytes: bytes) -> list[float]:
-    if _embedding_model is None:
-        raise RuntimeError("Model is not loaded. Call load_model() first.")
-
-    preprocessed = _preprocess_image(image_bytes)
-    embedding = _embedding_model.predict(preprocessed, verbose=0)
-    return embedding[0].tolist()
 
 
 def analyze_image(image_bytes: bytes) -> tuple[bool, float, list[float]]:
@@ -121,8 +104,10 @@ def analyze_image(image_bytes: bytes) -> tuple[bool, float, list[float]]:
     if _full_model is None or _embedding_model is None:
         raise RuntimeError("Model is not loaded. Call load_model() first.")
 
-    # Preprocesamiento costoso (resize LANCZOS + enhance) — solo una vez
-    preprocessed = _preprocess_image(image_bytes)
+    try:
+        preprocessed = _preprocess_image(image_bytes)
+    except Exception:
+        raise ValueError("No se pudo procesar la imagen. Verifica que el archivo no esté dañado.")
 
     # Clasificación
     predictions  = _full_model.predict(preprocessed, verbose=0)

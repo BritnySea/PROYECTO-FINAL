@@ -1,3 +1,6 @@
+import json
+import os
+import tempfile
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -5,6 +8,7 @@ import cloudinary
 import cloudinary.uploader
 import firebase_admin
 from firebase_admin import credentials, firestore, messaging
+from google.cloud.firestore_v1 import transactional
 
 from app.config import get_settings
 
@@ -17,7 +21,15 @@ def initialize_firebase() -> None:
     settings = get_settings()
 
     if not firebase_admin._apps:
-        cred = credentials.Certificate(settings.firebase_credentials_path)
+        if settings.firebase_credentials_json:
+            # Railway: credenciales como JSON string en variable de entorno
+            creds_dict = json.loads(settings.firebase_credentials_json)
+            tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+            json.dump(creds_dict, tmp)
+            tmp.close()
+            cred = credentials.Certificate(tmp.name)
+        else:
+            cred = credentials.Certificate(settings.firebase_credentials_path)
         firebase_admin.initialize_app(cred)
 
     _db = firestore.client()
@@ -28,18 +40,28 @@ def initialize_firebase() -> None:
         api_secret=settings.cloudinary_api_secret,
     )
 
-    print("[firebase_service] Firebase y Cloudinary inicializados.")
 
-
-def upload_photo(image_bytes: bytes, filename: str | None = None, folder: str = "dog_photos") -> str:
+def upload_photo(image_bytes: bytes, filename: str | None = None, folder: str = "dog_photos") -> tuple[str, str]:
+    """Sube una foto a Cloudinary. Devuelve (secure_url, public_id)."""
     public_id = filename.replace(".jpg", "") if filename else uuid.uuid4().hex
+    full_public_id = f"{folder}/{public_id}"
 
     result = cloudinary.uploader.upload(
         image_bytes,
-        public_id=f"{folder}/{public_id}",
+        public_id=full_public_id,
         resource_type="image",
+        allowed_formats=["jpg", "jpeg", "png", "webp"],
     )
-    return result["secure_url"]
+    return result["secure_url"], full_public_id
+
+
+def cleanup_cloudinary_photos(public_ids: list[str]) -> None:
+    """Elimina fotos de Cloudinary por su public_id. Silencia errores para no enmascarar el error original."""
+    for pid in public_ids:
+        try:
+            cloudinary.uploader.destroy(pid)
+        except Exception:
+            pass
 
 
 def save_lost_dog(dog_data: dict) -> str:
@@ -64,9 +86,7 @@ def get_active_found_reports() -> list[dict]:
     docs = _db.collection("found_dog_reports").stream()
 
     results = []
-    total = 0
     for doc in docs:
-        total += 1
         data = doc.to_dict()
         if data.get("status", "active") != "active":
             continue
@@ -75,7 +95,6 @@ def get_active_found_reports() -> list[dict]:
             data["doc_id"] = doc.id
             results.append(data)
 
-    print(f"[firebase_service] get_active_found_reports: {total} total, {len(results)} con embedding activos")
     return results
 
 
@@ -105,6 +124,64 @@ def get_user_role(uid: str) -> str:
     if doc.exists:
         return doc.to_dict().get("role", "USER")
     return "USER"
+
+
+FOUND_REPORT_COOLDOWN_SECONDS = 30
+
+
+def atomic_weekly_limit_check(uid: str, limit: int) -> bool:
+    """Lee e incrementa el contador semanal de forma atómica. Devuelve True si se permite, False si el límite fue alcanzado."""
+    if _db is None:
+        return True
+    now = datetime.now(timezone.utc)
+    iso = now.isocalendar()
+    week_key = f"{iso.year}-W{iso.week:02d}"
+    user_ref = _db.collection("users").document(uid)
+    txn = _db.transaction()
+
+    @transactional
+    def _run(txn, user_ref):
+        snapshot = user_ref.get(transaction=txn)
+        data = snapshot.to_dict() if snapshot.exists else {}
+        stored_week = data.get("weekly_reports_week", "")
+        count = data.get("weekly_reports_count", 0) if stored_week == week_key else 0
+        if count >= limit:
+            return False
+        txn.update(user_ref, {"weekly_reports_count": count + 1, "weekly_reports_week": week_key})
+        return True
+
+    return _run(txn, user_ref)
+
+
+def check_and_update_found_cooldown(uid: str) -> bool:
+    """Verifica cooldown de 30s entre reportes de perros encontrados del mismo usuario. Devuelve True si puede reportar."""
+    if _db is None:
+        return True
+    now = datetime.now(timezone.utc)
+    user_ref = _db.collection("users").document(uid)
+    txn = _db.transaction()
+
+    @transactional
+    def _run(txn, user_ref):
+        snapshot = user_ref.get(transaction=txn)
+        data = snapshot.to_dict() if snapshot.exists else {}
+        last_report = data.get("last_found_report_at")
+        if last_report and (now - last_report).total_seconds() < FOUND_REPORT_COOLDOWN_SECONDS:
+            return False
+        txn.update(user_ref, {"last_found_report_at": now})
+        return True
+
+    return _run(txn, user_ref)
+
+
+def is_user_blocked(uid: str) -> bool:
+    """Devuelve True si el usuario tiene isBlocked=True en Firestore."""
+    if _db is None:
+        return False
+    doc = _db.collection("users").document(uid).get()
+    if doc.exists:
+        return bool(doc.to_dict().get("isBlocked", False))
+    return False
 
 
 def count_weekly_reports(uid: str) -> int:
@@ -152,9 +229,8 @@ def send_match_notification(owner_uid: str, dog_name: str, similarity_percent: f
 
     try:
         messaging.send(message)
-        print(f"[FCM] Notificacion enviada al dueño {owner_uid} por coincidencia de '{dog_name}'")
-    except Exception as e:
-        print(f"[FCM] Error enviando notificacion a {owner_uid}: {e}")
+    except Exception:
+        pass
 
 
 def get_matches_for_dog(dog_id: str, top_k: int = 5) -> list[dict]:
@@ -245,6 +321,30 @@ def get_my_found_reports(uid: str) -> list[dict]:
             "description": data.get("description", ""),
         })
     return results
+
+
+def get_lost_dog_by_id(dog_id: str) -> dict | None:
+    """Devuelve el documento de un perro perdido por su ID, o None si no existe."""
+    if _db is None:
+        raise RuntimeError("Firebase no inicializado.")
+    doc = _db.collection("lost_dogs").document(dog_id).get()
+    if not doc.exists:
+        return None
+    data = doc.to_dict()
+    data["doc_id"] = doc.id
+    return data
+
+
+def get_found_report_by_id(report_id: str) -> dict | None:
+    """Devuelve el documento de un reporte de perro encontrado por su ID, o None si no existe."""
+    if _db is None:
+        raise RuntimeError("Firebase no inicializado.")
+    doc = _db.collection("found_dog_reports").document(report_id).get()
+    if not doc.exists:
+        return None
+    data = doc.to_dict()
+    data["doc_id"] = doc.id
+    return data
 
 
 def update_found_report_status(report_id: str, active: bool) -> None:
