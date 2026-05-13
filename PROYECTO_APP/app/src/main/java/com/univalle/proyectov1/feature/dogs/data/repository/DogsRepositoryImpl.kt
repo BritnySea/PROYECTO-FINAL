@@ -34,19 +34,6 @@ class DogsRepositoryImpl @Inject constructor(
         return "Bearer $token"
     }
 
-    override suspend fun validatePhoto(photo: File): Result<String> {
-        return try {
-            val token = getBearerToken()
-            val photoBody = photo.asRequestBody("image/*".toMediaTypeOrNull())
-            val photoPart = MultipartBody.Part.createFormData("photo", photo.name, photoBody)
-            val response = api.validatePhoto(token = token, photo = photoPart)
-            if (response.isDog) Result.success(response.message)
-            else Result.failure(Exception(response.message))
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
     override suspend fun validateLostPhoto(photo: File): Result<String> {
         return try {
             val token = getBearerToken()

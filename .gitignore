@@ -22,6 +22,7 @@ __pycache__/
 *.pyo
 *.pyd
 .env
+.env.test
 .venv/
 venv/
 env/
@@ -53,3 +54,6 @@ WOOF_BACKEND/ml/*.keras
 *.log
 *.tmp
 Thumbs.db
+
+# Herramienta local para obtener tokens Firebase (contiene API key, solo uso dev)
+WOOF_BACKEND/obtener_token.html

@@ -433,12 +433,14 @@ fun ReportLostDogScreen(
             val finalColorCheck = if (viewModel.dogColor == "Otro") viewModel.dogColorOther else viewModel.dogColor
             val allPhotosReady = viewModel.lostPhotoValidationStates.isNotEmpty() &&
                 viewModel.lostPhotoValidationStates.all { it is PhotoValidationState.Valid }
+            val isEmailValid = ownerEmail.isNotBlank() &&
+                android.util.Patterns.EMAIL_ADDRESS.matcher(ownerEmail).matches()
             val canSubmit = !isLoading &&
                 allPhotosReady &&
                 dogName.isNotBlank() &&
                 ownerName.isNotBlank() &&
                 ownerPhone.isNotBlank() &&
-                ownerEmail.isNotBlank() &&
+                isEmailValid &&
                 viewModel.dogSize.isNotBlank() &&
                 finalColorCheck.isNotBlank() &&
                 viewModel.dogSex.isNotBlank()

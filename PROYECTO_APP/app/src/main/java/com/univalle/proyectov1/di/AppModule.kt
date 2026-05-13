@@ -2,6 +2,7 @@ package com.univalle.proyectov1.di
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.univalle.proyectov1.BuildConfig
 import com.univalle.proyectov1.feature.auth.data.repository.AuthRepositoryImpl
 import com.univalle.proyectov1.feature.auth.domain.repository.AuthRepository
 import com.univalle.proyectov1.feature.dogs.data.remote.WoofApiService
@@ -39,15 +40,19 @@ object AppModule {
     @Provides
     @Singleton
     fun provideOkHttpClient(): OkHttpClient {
-        val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
-        }
-        return OkHttpClient.Builder()
-            .addInterceptor(logging)
+        val builder = OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(120, TimeUnit.SECONDS)
             .writeTimeout(120, TimeUnit.SECONDS)
-            .build()
+        // Solo registrar cuerpos HTTP en builds de depuración para evitar
+        // que tokens y datos personales queden en los logs de producción.
+        if (BuildConfig.DEBUG) {
+            val logging = HttpLoggingInterceptor().apply {
+                level = HttpLoggingInterceptor.Level.BODY
+            }
+            builder.addInterceptor(logging)
+        }
+        return builder.build()
     }
 
     @Provides
@@ -56,7 +61,7 @@ object AppModule {
         // Para emulador: http://10.0.2.2:8000/
         // Para dispositivo real: IP local de la PC en la misma red WiFi (ver con ipconfig)
         return Retrofit.Builder()
-            .baseUrl("http://10.240.120.216:8000/")
+            .baseUrl("http://192.168.0.20:8000/")
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

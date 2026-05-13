@@ -7,6 +7,7 @@ import android.content.Intent
 import androidx.core.app.NotificationCompat
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
@@ -18,7 +19,7 @@ class WoofMessagingService : FirebaseMessagingService() {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
         FirebaseFirestore.getInstance()
             .collection("users").document(uid)
-            .update("fcmToken", token)
+            .set(mapOf("fcmToken" to token), SetOptions.merge())
     }
 
     // Se llama cuando llega una notificación con la app en primer o segundo plano

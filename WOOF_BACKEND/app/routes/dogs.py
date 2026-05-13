@@ -1,14 +1,51 @@
 import asyncio
+import re
 import uuid
 import numpy as np
 from typing import Annotated, List, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from sklearn.metrics.pairwise import cosine_similarity
 
 from app.dependencies import verify_firebase_token
 from app.schemas.dog import DogMatch, MatchFoundDogResponse, MyFoundReportItem, MyFoundReportsResponse, OwnerMatchesResponse, RegisterLostDogResponse, ValidatePhotoResponse
 from app.services import firebase_service, model_service
+from app.limiter import limiter
+
+# Validación de archivos subidos
+ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
+MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
+
+# Límites de longitud para campos de texto
+MAX_NAME_LEN = 100
+MAX_DESCRIPTION_LEN = 500
+MAX_PHONE_LEN = 20
+MAX_EMAIL_LEN = 254
+MAX_SHORT_FIELD_LEN = 60
+
+PHONE_RE = re.compile(r"^\+?[\d\s\-\(\)]{7,20}$")
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _validate_image_upload(photo: UploadFile, index: int = 1) -> None:
+    """Valida MIME type y tamaño de un archivo subido. Lanza HTTPException si falla."""
+    if photo.content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=f"Foto {index}: tipo de archivo no permitido ({photo.content_type}). Solo se aceptan JPEG, PNG o WebP.",
+        )
+
+
+async def _validate_and_read_photo(photo: UploadFile, index: int = 1) -> bytes:
+    """Lee los bytes de una foto y valida su tamaño máximo."""
+    image_bytes = await photo.read()
+    if len(image_bytes) > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Foto {index}: el archivo supera el tamaño máximo permitido de 10 MB.",
+        )
+    return image_bytes
+
 
 router = APIRouter()
 
@@ -52,12 +89,18 @@ def _max_similarity(query_embeddings: list, stored_embeddings: list) -> float:
 
 
 @router.post("/validate-photo", response_model=ValidatePhotoResponse, summary="Validar si la foto muestra un perro")
+@limiter.limit("60/minute")
 async def validate_photo(
+    request: Request,
     current_user: Annotated[dict, Depends(verify_firebase_token)],
     photo: UploadFile = File(...),
 ):
-    image_bytes = await photo.read()
-    dog_detected, confidence, _ = await asyncio.to_thread(model_service.analyze_image, image_bytes)
+    _validate_image_upload(photo, 1)
+    image_bytes = await _validate_and_read_photo(photo, 1)
+    try:
+        dog_detected, confidence, _ = await asyncio.to_thread(model_service.analyze_image, image_bytes)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
     if dog_detected:
         message = "Foto válida."
@@ -70,12 +113,18 @@ async def validate_photo(
 
 
 @router.post("/validate-found-photo", response_model=ValidatePhotoResponse, summary="Validar foto de perro encontrado y verificar duplicado")
+@limiter.limit("60/minute")
 async def validate_found_photo(
+    request: Request,
     current_user: Annotated[dict, Depends(verify_firebase_token)],
     photo: UploadFile = File(...),
 ):
-    image_bytes = await photo.read()
-    dog_detected, confidence, embedding = await asyncio.to_thread(model_service.analyze_image, image_bytes)
+    _validate_image_upload(photo, 1)
+    image_bytes = await _validate_and_read_photo(photo, 1)
+    try:
+        dog_detected, confidence, embedding = await asyncio.to_thread(model_service.analyze_image, image_bytes)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
     if not dog_detected:
         message = (
@@ -106,13 +155,11 @@ async def validate_found_photo(
                 detail="Esta foto corresponde a un perro que tú mismo reportaste como perdido. No puedes reportarlo como encontrado.",
             )
 
-    print(f"[validate_found_photo] revisando {len(found_reports)} reportes encontrados con embedding")
     for report in found_reports:
         stored_embs = _get_embeddings(report)
         if not stored_embs:
             continue
         sim = _max_similarity(query_embs, stored_embs)
-        print(f"[validate_found_photo] similitud con reporte {report.get('doc_id')}: {sim:.1f}%")
         if sim >= DUPLICATE_THRESHOLD:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -123,12 +170,18 @@ async def validate_found_photo(
 
 
 @router.post("/validate-lost-photo", response_model=ValidatePhotoResponse, summary="Validar foto de perro perdido y verificar duplicado")
+@limiter.limit("60/minute")
 async def validate_lost_photo(
+    request: Request,
     current_user: Annotated[dict, Depends(verify_firebase_token)],
     photo: UploadFile = File(...),
 ):
-    image_bytes = await photo.read()
-    dog_detected, confidence, embedding = await asyncio.to_thread(model_service.analyze_image, image_bytes)
+    _validate_image_upload(photo, 1)
+    image_bytes = await _validate_and_read_photo(photo, 1)
+    try:
+        dog_detected, confidence, embedding = await asyncio.to_thread(model_service.analyze_image, image_bytes)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
     if not dog_detected:
         message = (
@@ -156,7 +209,9 @@ async def validate_lost_photo(
 
 
 @router.post("/register-lost-dog", response_model=RegisterLostDogResponse, summary="Registrar perro perdido con 1 a 3 fotos")
+@limiter.limit("20/minute")
 async def register_lost_dog(
+    request: Request,
     current_user: Annotated[dict, Depends(verify_firebase_token)],
     dog_name: str = Form(...),
     description: Optional[str] = Form(None),
@@ -173,26 +228,43 @@ async def register_lost_dog(
     uid = current_user.get("uid")
     role = await asyncio.to_thread(firebase_service.get_user_role, uid)
     if role != "ADMIN":
-        weekly_count = await asyncio.to_thread(firebase_service.count_weekly_reports, uid)
-        if weekly_count >= WEEKLY_REPORT_LIMIT:
+        allowed = await asyncio.to_thread(firebase_service.atomic_weekly_limit_check, uid, WEEKLY_REPORT_LIMIT)
+        if not allowed:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=f"Has alcanzado el límite de {WEEKLY_REPORT_LIMIT} reportes por semana. Podrás reportar nuevamente la próxima semana.",
             )
+
+    # Validar campos de texto
+    if not dog_name.strip() or len(dog_name) > MAX_NAME_LEN:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"El nombre del perro es requerido y debe tener máximo {MAX_NAME_LEN} caracteres.")
+    if not owner_name.strip() or len(owner_name) > MAX_NAME_LEN:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"El nombre del dueño es requerido y debe tener máximo {MAX_NAME_LEN} caracteres.")
+    if not PHONE_RE.match(owner_phone.strip()):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="El teléfono del dueño tiene un formato inválido.")
+    if not EMAIL_RE.match(owner_email.strip()) or len(owner_email) > MAX_EMAIL_LEN:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="El email del dueño tiene un formato inválido.")
+    if description and len(description) > MAX_DESCRIPTION_LEN:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"La descripción supera los {MAX_DESCRIPTION_LEN} caracteres permitidos.")
 
     if not photos or len(photos) == 0:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Se requiere al menos una foto.")
     if len(photos) > MAX_PHOTOS:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Máximo {MAX_PHOTOS} fotos permitidas.")
 
-    # Leer bytes de todas las fotos
-    images_bytes = [await photo.read() for photo in photos]
+    for i, photo in enumerate(photos, start=1):
+        _validate_image_upload(photo, i)
 
-    # Analizar todas las fotos en paralelo
-    analysis_results = await asyncio.gather(*[
-        asyncio.to_thread(model_service.analyze_image, img_bytes)
-        for img_bytes in images_bytes
-    ])
+    # Leer bytes de todas las fotos
+    images_bytes = [await _validate_and_read_photo(photo, i) for i, photo in enumerate(photos, start=1)]
+
+    try:
+        analysis_results = await asyncio.gather(*[
+            asyncio.to_thread(model_service.analyze_image, img_bytes)
+            for img_bytes in images_bytes
+        ])
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
     embeddings_list = []
     for i, (dog_detected, confidence, embedding) in enumerate(analysis_results):
@@ -204,7 +276,6 @@ async def register_lost_dog(
         embeddings_list.append(embedding)
 
     # Verificar duplicados: cualquiera de las nuevas fotos vs perros existentes
-    emb_new_arr = np.array(embeddings_list[0]).reshape(1, -1)
     existing_lost_dogs = await asyncio.to_thread(firebase_service.get_active_lost_dogs)
     for existing_dog in existing_lost_dogs:
         stored_embs = _get_embeddings(existing_dog)
@@ -222,7 +293,9 @@ async def register_lost_dog(
         asyncio.to_thread(firebase_service.upload_photo, img_bytes, f"{uuid.uuid4().hex}.jpg")
         for img_bytes in images_bytes
     ]
-    photo_urls = list(await asyncio.gather(*upload_tasks))
+    upload_results = list(await asyncio.gather(*upload_tasks))
+    photo_urls  = [r[0] for r in upload_results]
+    public_ids  = [r[1] for r in upload_results]
 
     dog_data = {
         "name": dog_name,
@@ -241,7 +314,11 @@ async def register_lost_dog(
         dog_data[f"photo_url_{i}"] = url
         dog_data[f"embedding_{i}"] = emb
 
-    dog_id = firebase_service.save_lost_dog(dog_data)
+    try:
+        dog_id = firebase_service.save_lost_dog(dog_data)
+    except Exception:
+        await asyncio.to_thread(firebase_service.cleanup_cloudinary_photos, public_ids)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al guardar el reporte. Las fotos fueron eliminadas.")
 
     return RegisterLostDogResponse(
         dog_id=dog_id,
@@ -250,7 +327,9 @@ async def register_lost_dog(
 
 
 @router.post("/match-found-dog", response_model=MatchFoundDogResponse, summary="Buscar coincidencias con perro encontrado (1 a 3 fotos)")
+@limiter.limit("10/minute")
 async def match_found_dog(
+    request: Request,
     current_user: Annotated[dict, Depends(verify_firebase_token)],
     photos: List[UploadFile] = File(...),
     size: Optional[str] = Form(None),
@@ -263,17 +342,31 @@ async def match_found_dog(
 ):
     uid = current_user.get("uid")
 
+    # Cooldown atómico: evita que el mismo usuario duplique un reporte dentro de 30s
+    can_report = await asyncio.to_thread(firebase_service.check_and_update_found_cooldown, uid)
+    if not can_report:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Enviaste un reporte hace menos de 30 segundos. Espera un momento antes de volver a intentarlo.",
+        )
+
     if not photos or len(photos) == 0:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Se requiere al menos una foto.")
     if len(photos) > MAX_PHOTOS:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Máximo {MAX_PHOTOS} fotos permitidas.")
 
-    images_bytes = [await photo.read() for photo in photos]
+    for i, photo in enumerate(photos, start=1):
+        _validate_image_upload(photo, i)
 
-    analysis_results = await asyncio.gather(*[
-        asyncio.to_thread(model_service.analyze_image, img_bytes)
-        for img_bytes in images_bytes
-    ])
+    images_bytes = [await _validate_and_read_photo(photo, i) for i, photo in enumerate(photos, start=1)]
+
+    try:
+        analysis_results = await asyncio.gather(*[
+            asyncio.to_thread(model_service.analyze_image, img_bytes)
+            for img_bytes in images_bytes
+        ])
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
     found_embeddings = []
     for i, (dog_detected, confidence, embedding) in enumerate(analysis_results):
@@ -286,8 +379,7 @@ async def match_found_dog(
 
     current_uid = current_user.get("uid")
 
-    # Subir primera foto y consultar Firestore en paralelo (primera foto para referencia)
-    found_filename = f"found_{uuid.uuid4().hex}.jpg"
+    # Subir fotos y consultar Firestore en paralelo
     upload_tasks = [
         asyncio.to_thread(firebase_service.upload_photo, images_bytes[i], f"found_{uuid.uuid4().hex}.jpg",
                           "found_dog_photos")
@@ -299,9 +391,11 @@ async def match_found_dog(
         asyncio.to_thread(firebase_service.get_active_lost_dogs),
         asyncio.to_thread(firebase_service.get_active_found_reports),
     )
-    found_photo_urls = list(upload_results_and_db[0])
-    lost_dogs = upload_results_and_db[1]
-    found_reports = upload_results_and_db[2]
+    raw_upload_results = list(upload_results_and_db[0])
+    found_photo_urls   = [r[0] for r in raw_upload_results]
+    found_public_ids   = [r[1] for r in raw_upload_results]
+    lost_dogs          = upload_results_and_db[1]
+    found_reports      = upload_results_and_db[2]
 
     # Verificar duplicado en reportes encontrados existentes
     for report in found_reports:
@@ -309,7 +403,6 @@ async def match_found_dog(
         if not stored_embs:
             continue
         sim = _max_similarity(found_embeddings, stored_embs)
-        print(f"[match_found_dog] similitud con reporte encontrado existente: {sim:.1f}%")
         if sim >= DUPLICATE_THRESHOLD:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -387,7 +480,11 @@ async def match_found_dog(
         report_data[f"found_dog_photo_url_{i}"] = url
         report_data[f"embedding_{i}"] = emb
 
-    firebase_service.save_found_report(report_data)
+    try:
+        firebase_service.save_found_report(report_data)
+    except Exception:
+        await asyncio.to_thread(firebase_service.cleanup_cloudinary_photos, found_public_ids)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al guardar el reporte. Las fotos fueron eliminadas.")
 
     message = (
         f"Se encontraron {len(matches)} perro(s) que podrían coincidir."
@@ -403,18 +500,28 @@ async def match_found_dog(
 
 
 @router.get("/my-dog-matches", response_model=OwnerMatchesResponse, summary="Obtener coincidencias para un perro perdido del usuario")
+@limiter.limit("60/minute")
 async def get_my_dog_matches(
+    request: Request,
     current_user: Annotated[dict, Depends(verify_firebase_token)],
     dog_id: str,
 ):
-    raw_matches = firebase_service.get_matches_for_dog(dog_id)
+    uid = current_user.get("uid")
+    dog_doc = await asyncio.to_thread(firebase_service.get_lost_dog_by_id, dog_id)
+    if dog_doc is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reporte no encontrado.")
+    if dog_doc.get("registered_by_uid") != uid:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para ver las coincidencias de este reporte.")
     from app.schemas.dog import OwnerMatchItem
+    raw_matches = firebase_service.get_matches_for_dog(dog_id)
     items = [OwnerMatchItem(**m) for m in raw_matches]
     return OwnerMatchesResponse(matches=items)
 
 
 @router.get("/my-found-reports", response_model=MyFoundReportsResponse, summary="Obtener reportes de perros encontrados del usuario")
+@limiter.limit("60/minute")
 async def get_my_found_reports(
+    request: Request,
     current_user: Annotated[dict, Depends(verify_firebase_token)],
 ):
     uid = current_user.get("uid")
@@ -424,10 +531,18 @@ async def get_my_found_reports(
 
 
 @router.patch("/found-report-status", summary="Activar o desactivar un reporte de perro encontrado")
+@limiter.limit("60/minute")
 async def update_found_report_status(
+    request: Request,
     current_user: Annotated[dict, Depends(verify_firebase_token)],
     report_id: str,
     active: bool,
 ):
+    uid = current_user.get("uid")
+    report_doc = await asyncio.to_thread(firebase_service.get_found_report_by_id, report_id)
+    if report_doc is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reporte no encontrado.")
+    if report_doc.get("found_by_uid") != uid:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para modificar este reporte.")
     firebase_service.update_found_report_status(report_id, active)
     return {"message": "Estado actualizado correctamente"}

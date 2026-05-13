@@ -7,8 +7,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.content.ContextCompat
-import com.google.firebase.messaging.FirebaseMessaging
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -66,7 +67,7 @@ class MainActivity : ComponentActivity() {
         FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
             FirebaseFirestore.getInstance()
                 .collection("users").document(uid)
-                .update("fcmToken", token)
+                .set(mapOf("fcmToken" to token), SetOptions.merge())
         }
     }
     override fun onCreate(savedInstanceState: Bundle?) {

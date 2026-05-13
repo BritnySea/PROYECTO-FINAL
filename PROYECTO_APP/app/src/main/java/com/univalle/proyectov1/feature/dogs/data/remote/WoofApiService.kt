@@ -79,13 +79,6 @@ data class MyFoundReportsApiResponse(
 interface WoofApiService {
 
     @Multipart
-    @POST("api/v1/validate-photo")
-    suspend fun validatePhoto(
-        @Header("Authorization") token: String,
-        @Part photo: MultipartBody.Part
-    ): ValidatePhotoResponse
-
-    @Multipart
     @POST("api/v1/validate-lost-photo")
     suspend fun validateLostPhoto(
         @Header("Authorization") token: String,

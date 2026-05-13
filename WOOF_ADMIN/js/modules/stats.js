@@ -46,18 +46,6 @@ function _animateCount(id, target) {
   requestAnimationFrame(step)
 }
 
-function _animatePercent(id, target) {
-  const el = document.getElementById(id)
-  if (!el) return
-  const start = performance.now()
-  const step = (now) => {
-    const p = Math.min((now - start) / 700, 1)
-    el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3))) + '%'
-    if (p < 1) requestAnimationFrame(step)
-  }
-  requestAnimationFrame(step)
-}
-
 // ── Colores y estilos Chart.js ────────────────────────────────────────────────
 const C = {
   gold:   '#D4AF37', goldA:   'rgba(212,175,55,0.75)',
@@ -471,7 +459,6 @@ export async function loadDashboard() {
   _animateCount('kpi-found',            totalFound)
   _animateCount('kpi-matches',          totalMatches)
   _animateCount('kpi-resolved',         totalResolved)
-  _animatePercent('kpi-match-rate', matchRate)
 
   // ── Gráficos ──────────────────────────────────────────────────────────────────
   if (typeof Chart === 'undefined') {
@@ -540,10 +527,6 @@ function _generateDashboardPDF() {
       ['Reportes de encontrados',     String(_kpiData.totalFound    ?? 'N/A')],
       ['Coincidencias IA >=50%',      String(_kpiData.totalMatches  ?? 'N/A')],
       ['Casos resueltos',             String(_kpiData.totalResolved ?? 'N/A')],
-      [
-        `Permanencia promedio en refugio (${_kpiData.permanenciaCount ?? 0} caso(s) cerrados)`,
-        _kpiData.permanenciaCount > 0 ? `${_kpiData.avgPermanencia} día(s)` : 'Sin datos',
-      ],
     ],
     styles:            { fontSize: 10, cellPadding: 4 },
     headStyles:        { fillColor: DARK, textColor: GOLD, fontStyle: 'bold' },
@@ -565,7 +548,19 @@ function _generateDashboardPDF() {
     doc.setFontSize(12)
     doc.setTextColor(...DARK)
     doc.text('Actividad de Reportes', 14, yC)
-    yC += 6
+    yC += 7
+
+    const _filterLabels = { daily: 'Diario', weekly: 'Semanal', monthly: 'Mensual', range: 'Rango de fechas' }
+    let _periodLabel = _filterLabels[_activityFilter] ?? 'Mensual'
+    if (_activityFilter === 'range' && _activityFrom && _activityTo) {
+      _periodLabel = `Rango de fechas: ${_activityFrom} — ${_activityTo}`
+    }
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(120, 120, 120)
+    doc.text(`Período: ${_periodLabel}`, 14, yC)
+    doc.setTextColor(...DARK)
+    yC += 5
     const tmpA = document.createElement('canvas')
     tmpA.width = activityCanvas.width; tmpA.height = activityCanvas.height
     const ctxA = tmpA.getContext('2d')

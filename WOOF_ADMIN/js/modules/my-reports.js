@@ -4,7 +4,7 @@ import {
   serverTimestamp, deleteField,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js'
 import { waitForAdminState, currentUser } from './admin-state.js'
-import { showToast } from './utils.js'
+import { showToast, escapeHtml } from './utils.js'
 import { _buildMatchCard, _openMatchLightbox } from './found-reports.js'
 
 // ── Estado ────────────────────────────────────────────────────────────────────
@@ -201,7 +201,7 @@ export function initMyReports() {
       renderMyReports()
     } catch (err) {
       showToast(err.code === 'permission-denied' ? '❌ Sin permisos en Firestore.' : `❌ Error: ${err.message}`)
-      console.error('[my-reports toggle]', err)
+      console.error('[my-reports toggle]', err?.code, err?.message)
     } finally {
       confirmBtn.disabled = false
       confirmBtn.textContent = isActive ? 'Sí, desactivar' : 'Sí, reactivar'
@@ -248,7 +248,7 @@ export async function loadMyReports() {
     renderMyReports()
   } catch (err) {
     container.innerHTML = '<p class="empty-state">Error al cargar tus reportes.</p>'
-    console.error('[my-reports] load error:', err)
+    console.error('[my-reports] load error:', err?.code, err?.message)
   }
 }
 
@@ -306,7 +306,7 @@ function renderMyReports() {
     const msg = (myDateFilter === 'range' && !myRangeFrom && !myRangeTo)
       ? 'Selecciona un rango de fechas y presiona Aplicar'
       : mySearchQuery
-        ? `Sin resultados para "${mySearchQuery}"`
+        ? `Sin resultados para "${escapeHtml(mySearchQuery)}"`
         : 'No tienes reportes para este período.'
     container.innerHTML = `<p class="empty-state">${msg}</p>`
     return
@@ -346,9 +346,9 @@ function _buildMyCard(data) {
     : null
 
   const details = [
-    size  && `📏 ${size}`,
-    color && `🎨 ${color}`,
-    sex   && `🐾 ${sex}`,
+    size  && `📏 ${escapeHtml(size)}`,
+    color && `🎨 ${escapeHtml(color)}`,
+    sex   && `🐾 ${escapeHtml(sex)}`,
   ].filter(Boolean).join('&emsp;')
 
   card.innerHTML = `
@@ -358,7 +358,7 @@ function _buildMyCard(data) {
       : `<div class="dog-card-photo-placeholder">🐾</div>`
     }
     <div class="dog-card-body">
-      <p class="dog-card-name">${isLost ? (data.name || 'Sin nombre').toUpperCase() : 'PERRO ENCONTRADO'}</p>
+      <p class="dog-card-name">${isLost ? escapeHtml(data.name || 'Sin nombre').toUpperCase() : 'PERRO ENCONTRADO'}</p>
       <p class="dog-card-meta">
         ${details ? details + '<br>' : ''}
         📅 ${date}

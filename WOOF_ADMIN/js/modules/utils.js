@@ -1,3 +1,14 @@
+// ── Escape HTML ───────────────────────────────────────────────────────────────
+export function escapeHtml(str) {
+  if (str == null) return ''
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 // ── Toast ─────────────────────────────────────────────────────────────────────
 let toastTimer = null
 
@@ -26,14 +37,14 @@ export function buildDogCard(id, data) {
 
   card.innerHTML = `
     ${(data.photo_url_1 || data.photo_url)
-      ? `<img class="dog-card-photo" src="${data.photo_url_1 || data.photo_url}" alt="${data.name || ''}" loading="lazy" />`
+      ? `<img class="dog-card-photo" src="${data.photo_url_1 || data.photo_url}" alt="${escapeHtml(data.name || '')}" loading="lazy" />`
       : `<div class="dog-card-photo-placeholder">🐾</div>`
     }
     <div class="dog-card-body">
-      <p class="dog-card-name">${(data.name || 'Sin nombre').toUpperCase()}</p>
+      <p class="dog-card-name">${escapeHtml(data.name || 'Sin nombre').toUpperCase()}</p>
       <p class="dog-card-meta">
-        👤 ${data.owner_name  || '—'}<br>
-        📞 ${data.owner_phone || '—'}<br>
+        👤 ${escapeHtml(data.owner_name)  || '—'}<br>
+        📞 ${escapeHtml(data.owner_phone) || '—'}<br>
         📅 ${date}
       </p>
       <span class="dog-card-tag ${statusClass}">${statusLabel}</span>

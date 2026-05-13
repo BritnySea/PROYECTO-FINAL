@@ -8,7 +8,6 @@ import com.univalle.proyectov1.feature.dogs.domain.model.ReportType
 import java.io.File
 
 interface DogsRepository {
-    suspend fun validatePhoto(photo: File): Result<String>
     suspend fun validateLostPhoto(photo: File): Result<String>
     suspend fun validateFoundPhoto(photo: File): Result<String>
 

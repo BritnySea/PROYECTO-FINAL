@@ -65,7 +65,6 @@ class DogsViewModel @Inject constructor(
         resetFoundDogForm()
         _registerState.value = UiState.Idle
         _matchState.value = UiState.Idle
-        _matchResults.value = emptyList()
         _myDogs.value = emptyList()
         _myReports.value = emptyList()
         _ownerMatches.value = emptyList()
@@ -104,9 +103,6 @@ class DogsViewModel @Inject constructor(
     // ─── Match Found Dog ──────────────────────────────────────────────────────
     private val _matchState = MutableStateFlow<UiState<List<DogMatch>>>(UiState.Idle)
     val matchState: StateFlow<UiState<List<DogMatch>>> = _matchState
-
-    private val _matchResults = MutableStateFlow<List<DogMatch>>(emptyList())
-    val matchResults: StateFlow<List<DogMatch>> = _matchResults
 
     // ─── My Reports ───────────────────────────────────────────────────────────
     private val _myDogs = MutableStateFlow<List<Dog>>(emptyList())
@@ -266,18 +262,12 @@ class DogsViewModel @Inject constructor(
                         if (e is RateLimitException) {
                             _registerState.value = UiState.Error(e.message ?: "Límite semanal alcanzado")
                         } else {
-                            if (lostPhotoValidationStates.isNotEmpty()) {
-                                lostPhotoValidationStates[0] = PhotoValidationState.Invalid(e.message ?: "Error al registrar")
-                            }
-                            _registerState.value = UiState.Idle
+                            _registerState.value = UiState.Error(e.message ?: "Error al registrar el perro")
                         }
                     }
                 )
             } catch (e: Exception) {
-                if (lostPhotoValidationStates.isNotEmpty()) {
-                    lostPhotoValidationStates[0] = PhotoValidationState.Invalid(e.message ?: "Error inesperado")
-                }
-                _registerState.value = UiState.Idle
+                _registerState.value = UiState.Error(e.message ?: "Error inesperado al registrar")
             }
         }
     }
@@ -352,25 +342,18 @@ class DogsViewModel @Inject constructor(
                 result.fold(
                     onSuccess = { matches ->
                         val filtered = matches.filter { it.similarityPercent >= 50 }
-                        _matchResults.value = filtered
                         _matchState.value = UiState.Success(filtered)
                     },
                     onFailure = { e ->
                         if (e is RateLimitException) {
                             _matchState.value = UiState.Error(e.message ?: "Límite semanal alcanzado")
                         } else {
-                            if (foundPhotoValidationStates.isNotEmpty()) {
-                                foundPhotoValidationStates[0] = PhotoValidationState.Invalid(e.message ?: "Error al buscar coincidencias")
-                            }
-                            _matchState.value = UiState.Idle
+                            _matchState.value = UiState.Error(e.message ?: "Error al buscar coincidencias")
                         }
                     }
                 )
             } catch (e: Exception) {
-                if (foundPhotoValidationStates.isNotEmpty()) {
-                    foundPhotoValidationStates[0] = PhotoValidationState.Invalid(e.message ?: "Error inesperado")
-                }
-                _matchState.value = UiState.Idle
+                _matchState.value = UiState.Error(e.message ?: "Error inesperado al buscar coincidencias")
             }
         }
     }

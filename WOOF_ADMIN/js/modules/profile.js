@@ -59,7 +59,7 @@ export function initProfile() {
       showToast('✅ Perfil actualizado correctamente', false)
     } catch (err) {
       showToast('❌ Error al guardar. Intenta nuevamente.')
-      console.error('[profile] save error:', err)
+      console.error('[profile] save error:', err?.code, err?.message)
     } finally {
       saveBtn.disabled = false
       saveBtn.innerHTML = 'Guardar cambios'

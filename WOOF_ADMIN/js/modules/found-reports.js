@@ -6,7 +6,7 @@ import { auth } from '../firebase-config.js'
 import {
   onAuthStateChanged,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js'
-import { showToast } from './utils.js'
+import { showToast, escapeHtml } from './utils.js'
 
 // ── Estado ────────────────────────────────────────────────────────────────────
 let allFoundReports    = []
@@ -203,7 +203,7 @@ export function initFoundReports() {
         ? '❌ Sin permisos en Firestore. Revisa las reglas.'
         : `❌ Error: ${err.code || err.message}`
       showToast(msg)
-      console.error('[found toggle-status]', err)
+      console.error('[found toggle-status]', err?.code, err?.message)
     } finally {
       confirmBtn.disabled = false
       confirmBtn.textContent = isActive ? 'Sí, desactivar' : 'Sí, reactivar'
@@ -231,7 +231,7 @@ export async function loadFoundReports() {
     renderFoundReports()
   } catch (err) {
     container.innerHTML = '<p class="empty-state">Error al cargar los datos.</p>'
-    console.error('[found-reports] error:', err.code, err.message, err)
+    console.error('[found-reports] error:', err?.code, err?.message)
   }
 }
 
@@ -329,7 +329,7 @@ function _buildFoundCard(id, data) {
       </div>
       <p class="dog-card-meta">
         ${details ? details + '<br>' : ''}
-        👤 ${data.reporter_name || '—'}<br>
+        👤 ${escapeHtml(data.reporter_name) || '—'}<br>
         📅 ${date}
       </p>
       <span class="dog-card-tag tag-match">${matchCount} coincidencia${matchCount !== 1 ? 's' : ''}</span>
@@ -425,7 +425,7 @@ async function openFoundModal(data) {
       matchCards.forEach(el => matchesContainer.appendChild(el))
     } catch (e) {
       matchesContainer.innerHTML = '<p class="empty-state" style="font-size:13px">Error al cargar coincidencias</p>'
-      console.error(e)
+      console.error('[found-reports] match load error:', e?.code, e?.message)
     }
   }
 
@@ -481,16 +481,16 @@ export async function _buildMatchCard(match) {
     <div class="found-match-info">
       <div class="found-match-sim ${colorClass}">${similarity.toFixed(1)}% similitud</div>
       ${dogData ? `
-        <p class="found-match-name">${dogData.name || '—'}</p>
+        <p class="found-match-name">${escapeHtml(dogData.name) || '—'}</p>
         <div class="found-match-fields">
-          ${dogData.owner_name  ? `<span>👤 ${dogData.owner_name}</span>`  : ''}
-          ${dogData.owner_phone ? `<span>📞 ${dogData.owner_phone}</span>` : ''}
-          ${dogData.owner_email ? `<span>✉️ ${dogData.owner_email}</span>` : ''}
-          ${dogData.breed       ? `<span>🐕 ${dogData.breed}</span>`       : ''}
-          ${dogData.color       ? `<span>🎨 ${dogData.color}</span>`       : ''}
-          ${dogData.size        ? `<span>📏 ${dogData.size}</span>`        : ''}
-          ${dogData.sex         ? `<span>🐾 ${dogData.sex}</span>`         : ''}
-          ${dogData.description ? `<span>📝 ${dogData.description}</span>` : ''}
+          ${dogData.owner_name  ? `<span>👤 ${escapeHtml(dogData.owner_name)}</span>`  : ''}
+          ${dogData.owner_phone ? `<span>📞 ${escapeHtml(dogData.owner_phone)}</span>` : ''}
+          ${dogData.owner_email ? `<span>✉️ ${escapeHtml(dogData.owner_email)}</span>` : ''}
+          ${dogData.breed       ? `<span>🐕 ${escapeHtml(dogData.breed)}</span>`       : ''}
+          ${dogData.color       ? `<span>🎨 ${escapeHtml(dogData.color)}</span>`       : ''}
+          ${dogData.size        ? `<span>📏 ${escapeHtml(dogData.size)}</span>`        : ''}
+          ${dogData.sex         ? `<span>🐾 ${escapeHtml(dogData.sex)}</span>`         : ''}
+          ${dogData.description ? `<span>📝 ${escapeHtml(dogData.description)}</span>` : ''}
         </div>
       ` : `<p style="font-size:12px; color:var(--muted)">Datos del perro no disponibles</p>`}
     </div>

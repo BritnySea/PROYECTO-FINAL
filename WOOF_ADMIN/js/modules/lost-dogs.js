@@ -2,7 +2,7 @@ import { db } from '../firebase-config.js'
 import {
   collection, getDocs, doc, updateDoc, serverTimestamp, deleteField,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js'
-import { showToast, buildDogCard } from './utils.js'
+import { showToast, buildDogCard, escapeHtml } from './utils.js'
 
 // ── Estado ────────────────────────────────────────────────────────────────────
 let allLostDogs   = []
@@ -199,7 +199,7 @@ export function initLostDogs() {
         ? '❌ Sin permisos en Firestore. Revisa las reglas.'
         : `❌ Error: ${err.code || err.message}`
       showToast(msg)
-      console.error('[toggle-status]', err.code, err.message, err)
+      console.error('[toggle-status]', err?.code, err?.message)
     } finally {
       confirmBtn.disabled = false
       confirmBtn.textContent = isActive ? 'Sí, desactivar' : 'Sí, reactivar'
@@ -229,7 +229,7 @@ export async function loadLostDogs() {
     renderLostDogs()
   } catch (err) {
     container.innerHTML = '<p class="empty-state">Error al cargar los datos.</p>'
-    console.error(err)
+    console.error('[lost-dogs] error:', err?.code, err?.message)
   }
 }
 
@@ -388,8 +388,8 @@ function openDogModal(data) {
 
   document.getElementById('dog-modal-fields').innerHTML = fields.map(f => `
     <div class="dog-modal-field">
-      <p class="dog-modal-field-label">${f.icon} ${f.label}</p>
-      <p class="dog-modal-field-value">${f.value}</p>
+      <p class="dog-modal-field-label">${f.icon} ${escapeHtml(f.label)}</p>
+      <p class="dog-modal-field-value">${escapeHtml(f.value)}</p>
     </div>
   `).join('')
 

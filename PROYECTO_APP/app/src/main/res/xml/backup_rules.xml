@@ -1,13 +1,14 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
-   See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older than API 31
-   See https://developer.android.com/about/versions/12/backup-restore
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Reglas de respaldo completo para Android 11 e inferior.
+    Se excluyen las preferencias de la app y cualquier caché para evitar
+    que tokens, sesiones o datos sensibles se incluyan en el backup.
+    Referencia: https://developer.android.com/guide/topics/data/autobackup
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <!-- Excluir SharedPreferences de la app (puede contener tokens de sesión) -->
+    <exclude domain="sharedpref" path="." />
+    <!-- Excluir caché de imágenes y archivos temporales -->
+    <exclude domain="cache" path="." />
+    <exclude domain="external-cache" path="." />
 </full-backup-content>

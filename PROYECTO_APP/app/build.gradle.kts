@@ -42,6 +42,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -70,15 +71,15 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging")
 
     // Importante para usar .await() con Firebase
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
     // Para que tus pantallas (UI) se conecten con los ViewModels
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     // Para moverte entre pantallas
-    implementation("androidx.navigation:navigation-compose:2.7.7")
+    implementation("androidx.navigation:navigation-compose:2.8.7")
 
     // Hilt - Inyección de Dependencias
-    implementation("com.google.dagger:hilt-android:2.48")
-    kapt("com.google.dagger:hilt-android-compiler:2.48")
+    implementation("com.google.dagger:hilt-android:2.52")
+    kapt("com.google.dagger:hilt-android-compiler:2.52")
     implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
 
     implementation("androidx.compose.material:material-icons-extended:1.6.0")
@@ -89,7 +90,7 @@ dependencies {
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
     // Coil - carga de imágenes en Compose
-    implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation("io.coil-kt:coil-compose:2.7.0")
 
     // Retrofit + OkHttp - cliente HTTP para el backend WOOF
     implementation("com.squareup.retrofit2:retrofit:2.11.0")

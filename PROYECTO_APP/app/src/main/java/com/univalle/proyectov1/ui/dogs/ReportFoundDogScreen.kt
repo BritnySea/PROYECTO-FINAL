@@ -405,13 +405,15 @@ fun ReportFoundDogScreen(
             val finalColorCheck = if (viewModel.foundDogColor == "Otro") viewModel.foundDogColorOther else viewModel.foundDogColor
             val allPhotosReady = viewModel.foundPhotoValidationStates.isNotEmpty() &&
                 viewModel.foundPhotoValidationStates.all { it is PhotoValidationState.Valid }
+            val isEmailValid = reporterEmail.isNotBlank() &&
+                android.util.Patterns.EMAIL_ADDRESS.matcher(reporterEmail).matches()
             val canSubmit = !isLoading &&
                 allPhotosReady &&
                 viewModel.foundDogSize.isNotBlank() &&
                 finalColorCheck.isNotBlank() &&
                 reporterName.isNotBlank() &&
                 reporterPhone.isNotBlank() &&
-                reporterEmail.isNotBlank()
+                isEmailValid
 
             Button(
                 onClick = {

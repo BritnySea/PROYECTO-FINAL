@@ -2,7 +2,7 @@ import { db } from '../firebase-config.js'
 import {
   collection, getDocs, doc, updateDoc, query, where,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js'
-import { showToast } from './utils.js'
+import { showToast, escapeHtml } from './utils.js'
 
 let allUsers  = []
 let searchQuery = ''
@@ -82,8 +82,8 @@ function _buildUserRow(u) {
   row.innerHTML = `
     <div class="user-row-avatar">${initials}</div>
     <div class="user-row-info">
-      <p class="user-row-name">${u.name || '—'}</p>
-      <p class="user-row-email">${u.email || '—'}</p>
+      <p class="user-row-name">${escapeHtml(u.name) || '—'}</p>
+      <p class="user-row-email">${escapeHtml(u.email) || '—'}</p>
     </div>
     <span class="${statusClass}">${statusLabel}</span>
     <svg class="user-row-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -262,7 +262,7 @@ function _openBlockConfirm(isBlocked) {
       showToast(newBlocked ? '🔒 Cuenta bloqueada' : '🔓 Cuenta desbloqueada', false)
     } catch (err) {
       showToast('❌ Error al actualizar. Revisa los permisos de Firestore.')
-      console.error(err)
+      console.error('[users] block error:', err?.code, err?.message)
     } finally {
       newBtn.disabled = false
     }
