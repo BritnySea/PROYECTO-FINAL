@@ -46,6 +46,7 @@ import com.univalle.proyectov1.ui.theme.Gold
 import com.univalle.proyectov1.ui.theme.Proyectov1Theme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 
@@ -75,12 +76,9 @@ class MainActivity : ComponentActivity() {
         requestNotificationPermission()
         saveFcmToken()
 
-        // Extraer oobCode si la app fue abierta desde un enlace de recuperación de contraseña
-        val deepLinkOobCode = intent?.data?.let { uri ->
-            if (uri.getQueryParameter("mode") == "resetPassword")
-                uri.getQueryParameter("oobCode")
-            else null
-        }
+        // Extraer datos del deep link (verificación de correo o recuperación de contraseña)
+        val deepLinkMode    = intent?.data?.getQueryParameter("mode")
+        val deepLinkOobCode = intent?.data?.getQueryParameter("oobCode")
 
         setContent {
             Proyectov1Theme {
@@ -93,11 +91,26 @@ class MainActivity : ComponentActivity() {
                     if (currentUser != null && currentUser.isEmailVerified) Routes.HOME
                     else Routes.LOGIN
 
-                // Si viene de un deep link de recuperación, navegar a esa pantalla
-                LaunchedEffect(deepLinkOobCode) {
-                    if (deepLinkOobCode != null) {
-                        navController.navigate("reset_password/$deepLinkOobCode") {
-                            popUpTo(0) { inclusive = true }
+                var showEmailVerifiedSuccess by remember { mutableStateOf(false) }
+
+                // Manejar deep links: verificación de correo y recuperación de contraseña
+                LaunchedEffect(Unit) {
+                    when {
+                        deepLinkMode == "verifyEmail" && !deepLinkOobCode.isNullOrBlank() -> {
+                            try {
+                                FirebaseAuth.getInstance().applyActionCode(deepLinkOobCode).await()
+                                showEmailVerifiedSuccess = true
+                            } catch (_: Exception) {
+                                // Link expirado o ya usado — el usuario verá el error al intentar login
+                            }
+                            navController.navigate(Routes.LOGIN) {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        }
+                        deepLinkMode == "resetPassword" && !deepLinkOobCode.isNullOrBlank() -> {
+                            navController.navigate("reset_password/$deepLinkOobCode") {
+                                popUpTo(0) { inclusive = true }
+                            }
                         }
                     }
                 }
@@ -214,7 +227,9 @@ class MainActivity : ComponentActivity() {
                                         navController.navigate(Routes.REGISTER)
                                     },
                                     showBlockedMessage = showBlockedMessage,
-                                    onBlockedMessageShown = { showBlockedMessage = false }
+                                    onBlockedMessageShown = { showBlockedMessage = false },
+                                    showEmailVerifiedSuccess = showEmailVerifiedSuccess,
+                                    onEmailVerifiedMessageShown = { showEmailVerifiedSuccess = false }
                                 )
                             }
 

@@ -1,5 +1,6 @@
 package com.univalle.proyectov1.feature.auth.data.repository
 
+import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.userProfileChangeRequest
@@ -20,18 +21,27 @@ class AuthRepositoryImpl(
             val result = auth.createUserWithEmailAndPassword(user.email, password).await()
 
             // Guardamos el nombre en el perfil de Firebase Auth para recuperarlo después
-            result.user?.updateProfile(
-                userProfileChangeRequest { displayName = user.name }
-            )?.await()
+            try {
+                result.user?.updateProfile(
+                    userProfileChangeRequest { displayName = user.name }
+                )?.await()
+            } catch (e: Exception) {
+                Log.w("AuthRepo", "updateProfile falló (no crítico): ${e.message}")
+            }
 
-            // Enviamos el correo de verificación
-            result.user?.sendEmailVerification()?.await()
+            // Enviamos el correo de verificación — si falla no cancelamos el registro
+            try {
+                result.user?.sendEmailVerification()?.await()
+            } catch (e: Exception) {
+                Log.w("AuthRepo", "sendEmailVerification falló (no crítico): ${e.message}")
+            }
 
             // Cerramos sesión: el usuario NO debe quedar logueado sin verificar
             auth.signOut()
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e("AuthRepo", "signUp falló: [${e.javaClass.simpleName}] ${e.message}")
             Result.failure(e)
         }
     }
@@ -42,23 +52,35 @@ class AuthRepositoryImpl(
         return try {
             auth.signInWithEmailAndPassword(email, password).await()
 
+            // Forzar recarga del estado del usuario desde el servidor
+            // (isEmailVerified puede estar desactualizado en caché local)
+            try {
+                auth.currentUser?.reload()?.await()
+            } catch (_: Exception) {
+                // reload puede fallar si el token fue revocado; signInWithEmailAndPassword ya autenticó
+            }
+
             val firebaseUser = auth.currentUser
             if (firebaseUser != null && firebaseUser.isEmailVerified) {
                 val uid = firebaseUser.uid
-                val userDoc = db.collection("users").document(uid).get(Source.SERVER).await()
+                try {
+                    val userDoc = db.collection("users").document(uid).get(Source.SERVER).await()
 
-                if (userDoc.exists() && userDoc.getBoolean("isBlocked") == true) {
-                    auth.signOut()
-                    return Result.failure(Exception("CUENTA_BLOQUEADA"))
-                }
+                    if (userDoc.exists() && userDoc.getBoolean("isBlocked") == true) {
+                        auth.signOut()
+                        return Result.failure(Exception("CUENTA_BLOQUEADA"))
+                    }
 
-                if (!userDoc.exists()) {
-                    val newUser = User(
-                        uid = uid,
-                        name = firebaseUser.displayName ?: "Usuario",
-                        email = firebaseUser.email ?: ""
-                    )
-                    db.collection("users").document(uid).set(newUser).await()
+                    if (!userDoc.exists()) {
+                        val newUser = User(
+                            uid = uid,
+                            name = firebaseUser.displayName ?: "Usuario",
+                            email = firebaseUser.email ?: ""
+                        )
+                        db.collection("users").document(uid).set(newUser).await()
+                    }
+                } catch (e: Exception) {
+                    Log.w("AuthRepo", "Firestore post-signIn falló (no crítico): ${e.message}")
                 }
             }
 
@@ -77,25 +99,32 @@ class AuthRepositoryImpl(
 
             // Si es la primera vez que entra con Google, lo guardamos en la base de datos
             val uid = result.user?.uid ?: throw Exception("Error al obtener UID de Google")
-            val userDoc = db.collection("users").document(uid).get(Source.SERVER).await()
 
-            if (userDoc.exists() && userDoc.getBoolean("isBlocked") == true) {
-                auth.signOut()
-                return Result.failure(Exception("CUENTA_BLOQUEADA"))
-            }
+            try {
+                val userDoc = db.collection("users").document(uid).get(Source.SERVER).await()
 
-            if (!userDoc.exists()) {
-                val newUser = User(
-                    uid = uid,
-                    name = result.user?.displayName ?: "Usuario de Google",
-                    email = result.user?.email ?: ""
-                )
-                db.collection("users").document(uid).set(newUser).await()
+                if (userDoc.exists() && userDoc.getBoolean("isBlocked") == true) {
+                    auth.signOut()
+                    return Result.failure(Exception("CUENTA_BLOQUEADA"))
+                }
+
+                if (!userDoc.exists()) {
+                    val newUser = User(
+                        uid = uid,
+                        name = result.user?.displayName ?: "Usuario de Google",
+                        email = result.user?.email ?: ""
+                    )
+                    db.collection("users").document(uid).set(newUser).await()
+                }
+            } catch (e: Exception) {
+                // Si Firestore falla pero Auth tuvo éxito, permitimos el login de todas formas
+                Log.e("AuthRepo", "Firestore post-Google falló (no crítico): [${e.javaClass.simpleName}] ${e.message}")
             }
 
             Result.success(Unit)
         } catch (e: Exception) {
-            Result.failure(e)
+            Log.e("AuthRepo", "signInWithGoogle falló: [${e.javaClass.simpleName}] ${e.message}", e)
+            Result.failure(Exception("[${e.javaClass.simpleName}] ${e.message}", e))
         }
     }
 
@@ -150,6 +179,8 @@ class AuthRepositoryImpl(
     override suspend fun confirmPasswordReset(oobCode: String, newPassword: String): Result<Unit> {
         return try {
             auth.confirmPasswordReset(oobCode, newPassword).await()
+            // Cerrar sesión para que el usuario entre limpio con la nueva contraseña
+            auth.signOut()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

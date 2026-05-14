@@ -202,15 +202,17 @@ class AuthViewModel @Inject constructor(
                 result.onSuccess {
                     _signInState.value = UiState.Success(Unit)
                 }.onFailure { error ->
+                    val rawMsg = error.message ?: ""
                     val mensaje = when {
-                        error.message == "CUENTA_BLOQUEADA" ->
+                        rawMsg == "CUENTA_BLOQUEADA" ->
                             "🚫 Tu cuenta ha sido bloqueada por uso indebido."
-                        error.message?.contains("network", ignoreCase = true) == true ||
-                        error.message?.contains("Network", ignoreCase = true) == true ->
+                        rawMsg.contains("network", ignoreCase = true) ->
                             "Sin conexión a internet. Verifica tu red e intenta nuevamente."
-                        error.message?.contains("timeout", ignoreCase = true) == true ->
+                        rawMsg.contains("timeout", ignoreCase = true) ->
                             "La conexión tardó demasiado. Intenta nuevamente."
-                        else -> "No se pudo iniciar sesión con Google. Intenta nuevamente."
+                        rawMsg.contains("INVALID_CREDENTIAL") || rawMsg.contains("invalid_grant") ->
+                            "Credencial de Google inválida. Revisa la configuración de Firebase."
+                        else -> "Google Sign-In: $rawMsg"
                     }
                     _signInState.value = UiState.Error(mensaje)
                 }

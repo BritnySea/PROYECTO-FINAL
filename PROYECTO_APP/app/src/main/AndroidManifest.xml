@@ -43,6 +43,15 @@
                     android:host="proyectov1-15.firebaseapp.com"
                     android:pathPrefix="/__/auth/action" />
             </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="refugiowoof.web.app"
+                    android:pathPrefix="/auth-action.html" />
+            </intent-filter>
         </activity>
 
         <service

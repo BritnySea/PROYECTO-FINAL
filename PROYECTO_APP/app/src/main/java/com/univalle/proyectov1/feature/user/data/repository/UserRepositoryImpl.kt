@@ -28,9 +28,23 @@ class UserRepositoryImpl @Inject constructor(
 
     override suspend fun updateUserPhone(phone: String): Result<Unit> {
         return try {
-            db.collection("users").document(uid)
-                .update("phone", phone)
-                .await()
+            val docRef = db.collection("users").document(uid)
+            val doc = docRef.get().await()
+            if (!doc.exists()) {
+                val currentUser = auth.currentUser!!
+                docRef.set(
+                    mapOf(
+                        "uid"       to uid,
+                        "name"      to (currentUser.displayName ?: "Usuario"),
+                        "email"     to (currentUser.email ?: ""),
+                        "role"      to "USER",
+                        "isBlocked" to false,
+                        "phone"     to phone
+                    )
+                ).await()
+            } else {
+                docRef.update("phone", phone).await()
+            }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
