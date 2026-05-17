@@ -46,8 +46,8 @@ document.getElementById('btn-logout').addEventListener('click', async () => {
 
 // ── Gestión de sesión ────────────────────────────────────────────────────────
 
-const INACTIVITY_MS  = 60 * 1000         // 1 minuto (prueba)
-const WARNING_MS     = 20 * 1000         // aviso 20 segundos antes
+const INACTIVITY_MS  = 30 * 60 * 1000    // 30 minutos
+const WARNING_MS     =  2 * 60 * 1000    // aviso 2 minutos antes
 
 let _inactivityTimer   = null
 let _warningTimer      = null
