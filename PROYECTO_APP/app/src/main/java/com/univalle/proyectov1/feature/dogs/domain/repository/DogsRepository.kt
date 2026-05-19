@@ -3,6 +3,7 @@ package com.univalle.proyectov1.feature.dogs.domain.repository
 import com.univalle.proyectov1.feature.dogs.domain.model.Dog
 import com.univalle.proyectov1.feature.dogs.domain.model.DogMatch
 import com.univalle.proyectov1.feature.dogs.domain.model.FoundDogMatchForOwner
+import com.univalle.proyectov1.feature.dogs.domain.model.MyFoundReportWithMatches
 import com.univalle.proyectov1.feature.dogs.domain.model.MyReport
 import com.univalle.proyectov1.feature.dogs.domain.model.ReportType
 import java.io.File
@@ -45,4 +46,8 @@ interface DogsRepository {
     suspend fun deactivateDog(dogId: String): Result<Unit>
 
     suspend fun getMatchesForDog(dogId: String): Result<List<FoundDogMatchForOwner>>
+
+    suspend fun getMyFoundReportsOnly(): List<MyReport>
+
+    suspend fun getMatchesForFoundReport(reportId: String): Result<MyFoundReportWithMatches>
 }

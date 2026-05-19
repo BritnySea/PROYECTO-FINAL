@@ -61,3 +61,25 @@ class MyFoundReportItem(BaseModel):
 
 class MyFoundReportsResponse(BaseModel):
     reports: List[MyFoundReportItem]
+
+
+class FinderMatchItem(BaseModel):
+    lost_dog_id: str
+    lost_dog_name: str
+    lost_dog_photo_url: str
+    similarity_percent: float
+    owner_name: str
+    owner_phone: str
+    owner_email: str
+    lost_dog_size: str
+    lost_dog_color: str
+    lost_dog_sex: str
+    lost_dog_description: str
+    lost_at: str
+
+
+class FinderMatchesResponse(BaseModel):
+    report_id: str
+    found_dog_photo_url: str
+    found_dog_photo_urls: List[str] = []
+    matches: List[FinderMatchItem]

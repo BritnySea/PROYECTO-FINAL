@@ -74,6 +74,28 @@ data class MyFoundReportsApiResponse(
     val reports: List<MyFoundReportItemResponse>
 )
 
+data class FinderMatchItemResponse(
+    @SerializedName("lost_dog_id") val lostDogId: String,
+    @SerializedName("lost_dog_name") val lostDogName: String,
+    @SerializedName("lost_dog_photo_url") val lostDogPhotoUrl: String,
+    @SerializedName("similarity_percent") val similarityPercent: Float,
+    @SerializedName("owner_name") val ownerName: String,
+    @SerializedName("owner_phone") val ownerPhone: String,
+    @SerializedName("owner_email") val ownerEmail: String,
+    @SerializedName("lost_dog_size") val lostDogSize: String,
+    @SerializedName("lost_dog_color") val lostDogColor: String,
+    @SerializedName("lost_dog_sex") val lostDogSex: String,
+    @SerializedName("lost_dog_description") val lostDogDescription: String,
+    @SerializedName("lost_at") val lostAt: String
+)
+
+data class FinderMatchesApiResponse(
+    @SerializedName("report_id") val reportId: String,
+    @SerializedName("found_dog_photo_url") val foundDogPhotoUrl: String,
+    @SerializedName("found_dog_photo_urls") val foundDogPhotoUrls: List<String> = emptyList(),
+    val matches: List<FinderMatchItemResponse>
+)
+
 // ─── Retrofit interface ───────────────────────────────────────────────────────
 
 interface WoofApiService {
@@ -140,4 +162,10 @@ interface WoofApiService {
         @Query("report_id") reportId: String,
         @Query("active") active: Boolean
     )
+
+    @GET("api/v1/my-found-report-matches")
+    suspend fun getMatchesForFoundReport(
+        @Header("Authorization") token: String,
+        @Query("report_id") reportId: String
+    ): FinderMatchesApiResponse
 }

@@ -40,3 +40,25 @@ data class FoundDogMatchForOwner(
     val foundDogDescription: String = "",
     val reportedAt: String = ""
 )
+
+data class LostDogMatchForFinder(
+    val lostDogId: String = "",
+    val lostDogName: String = "",
+    val lostDogPhotoUrl: String = "",
+    val similarityPercent: Float = 0f,
+    val ownerName: String = "",
+    val ownerPhone: String = "",
+    val ownerEmail: String = "",
+    val lostDogSize: String = "",
+    val lostDogColor: String = "",
+    val lostDogSex: String = "",
+    val lostDogDescription: String = "",
+    val lostAt: String = ""
+)
+
+data class MyFoundReportWithMatches(
+    val reportId: String = "",
+    val foundDogPhotoUrl: String = "",
+    val foundDogPhotoUrls: List<String> = emptyList(),
+    val matches: List<LostDogMatchForFinder> = emptyList()
+)

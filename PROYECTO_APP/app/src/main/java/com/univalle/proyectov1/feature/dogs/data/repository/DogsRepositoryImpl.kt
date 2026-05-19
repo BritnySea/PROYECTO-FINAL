@@ -8,6 +8,8 @@ import com.univalle.proyectov1.feature.dogs.data.remote.WoofApiService
 import com.univalle.proyectov1.feature.dogs.domain.model.Dog
 import com.univalle.proyectov1.feature.dogs.domain.model.DogMatch
 import com.univalle.proyectov1.feature.dogs.domain.model.FoundDogMatchForOwner
+import com.univalle.proyectov1.feature.dogs.domain.model.LostDogMatchForFinder
+import com.univalle.proyectov1.feature.dogs.domain.model.MyFoundReportWithMatches
 import com.univalle.proyectov1.feature.dogs.domain.model.MyReport
 import com.univalle.proyectov1.core.result.RateLimitException
 import com.univalle.proyectov1.feature.dogs.domain.model.ReportType
@@ -329,6 +331,78 @@ class DogsRepositoryImpl @Inject constructor(
                 )
             }
             Result.success(matches)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getMyFoundReportsOnly(): List<MyReport> {
+        return try {
+            val token = getBearerToken()
+            val dateFormat = SimpleDateFormat("d 'de' MMMM 'de' yyyy", Locale("es", "ES"))
+            val response = api.getMyFoundReports(token)
+            response.reports
+                .filter { it.status == "active" }
+                .map { r ->
+                    val parsedDate = try {
+                        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
+                        val d = sdf.parse(r.createdAt)
+                        if (d != null) dateFormat.format(d) else r.createdAt
+                    } catch (_: Exception) { r.createdAt }
+                    val photoUrls = r.photoUrls.ifEmpty { listOfNotNull(r.photoUrl.ifBlank { null }) }
+                    MyReport(
+                        id = r.reportId,
+                        type = ReportType.FOUND,
+                        photoUrl = photoUrls.firstOrNull() ?: "",
+                        photoUrls = photoUrls,
+                        status = r.status,
+                        createdAt = parsedDate,
+                        dogName = "",
+                        size = r.size,
+                        color = r.color,
+                        sex = r.sex,
+                        breed = "",
+                        description = r.description
+                    )
+                }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    override suspend fun getMatchesForFoundReport(reportId: String): Result<MyFoundReportWithMatches> {
+        return try {
+            val token = getBearerToken()
+            val response = api.getMatchesForFoundReport(token = token, reportId = reportId)
+            val photoUrls = response.foundDogPhotoUrls.ifEmpty {
+                listOfNotNull(response.foundDogPhotoUrl.ifBlank { null })
+            }
+            val matches = response.matches.map { m ->
+                LostDogMatchForFinder(
+                    lostDogId = m.lostDogId,
+                    lostDogName = m.lostDogName,
+                    lostDogPhotoUrl = m.lostDogPhotoUrl,
+                    similarityPercent = m.similarityPercent,
+                    ownerName = m.ownerName,
+                    ownerPhone = m.ownerPhone,
+                    ownerEmail = m.ownerEmail,
+                    lostDogSize = m.lostDogSize,
+                    lostDogColor = m.lostDogColor,
+                    lostDogSex = m.lostDogSex,
+                    lostDogDescription = m.lostDogDescription,
+                    lostAt = m.lostAt
+                )
+            }
+            Result.success(
+                MyFoundReportWithMatches(
+                    reportId = response.reportId,
+                    foundDogPhotoUrl = photoUrls.firstOrNull() ?: "",
+                    foundDogPhotoUrls = photoUrls,
+                    matches = matches
+                )
+            )
+        } catch (e: HttpException) {
+            Result.failure(parseHttpException(e))
         } catch (e: Exception) {
             Result.failure(e)
         }

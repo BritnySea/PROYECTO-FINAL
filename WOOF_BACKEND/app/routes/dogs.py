@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from sklearn.metrics.pairwise import cosine_similarity
 
 from app.dependencies import verify_firebase_token
-from app.schemas.dog import DogMatch, MatchFoundDogResponse, MyFoundReportItem, MyFoundReportsResponse, OwnerMatchesResponse, RegisterLostDogResponse, ValidatePhotoResponse
+from app.schemas.dog import DogMatch, FinderMatchItem, FinderMatchesResponse, MatchFoundDogResponse, MyFoundReportItem, MyFoundReportsResponse, OwnerMatchesResponse, RegisterLostDogResponse, ValidatePhotoResponse
 from app.services import firebase_service, model_service
 from app.limiter import limiter
 
@@ -460,6 +460,10 @@ async def match_found_dog(
                     dog_name=dog.get("name", "tu perro"),
                     similarity_percent=sim_pct,
                 )
+            firebase_service.send_match_notification_to_finder(
+                finder_uid=uid,
+                similarity_percent=sim_pct,
+            )
 
     report_data = {
         "found_by_uid": current_user.get("uid"),
@@ -528,6 +532,81 @@ async def get_my_found_reports(
     raw = firebase_service.get_my_found_reports(uid)
     items = [MyFoundReportItem(**r) for r in raw]
     return MyFoundReportsResponse(reports=items)
+
+
+@router.get("/my-found-report-matches", response_model=FinderMatchesResponse, summary="Obtener coincidencias de un perro encontrado del usuario con perros perdidos de otros")
+@limiter.limit("60/minute")
+async def get_my_found_report_matches(
+    request: Request,
+    current_user: Annotated[dict, Depends(verify_firebase_token)],
+    report_id: str,
+):
+    uid = current_user.get("uid")
+    report_doc = await asyncio.to_thread(firebase_service.get_found_report_by_id, report_id)
+    if report_doc is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reporte no encontrado.")
+    if report_doc.get("found_by_uid") != uid:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para ver las coincidencias de este reporte.")
+
+    found_photo_urls = []
+    for i in range(1, 4):
+        url = report_doc.get(f"found_dog_photo_url_{i}")
+        if url:
+            found_photo_urls.append(url)
+    if not found_photo_urls:
+        fallback = report_doc.get("found_dog_photo_url", "")
+        if fallback:
+            found_photo_urls.append(fallback)
+
+    raw_matches = report_doc.get("matches", [])
+    items = []
+    for match in raw_matches:
+        dog_id = match.get("dog_id")
+        similarity = match.get("similarity_percent", 0.0)
+        if not dog_id:
+            continue
+        lost_dog = await asyncio.to_thread(firebase_service.get_lost_dog_by_id, dog_id)
+        if not lost_dog:
+            continue
+        # Excluir perros perdidos registrados por el mismo usuario
+        if lost_dog.get("registered_by_uid") == uid:
+            continue
+
+        lost_photo_url = ""
+        for i in range(1, 4):
+            url = lost_dog.get(f"photo_url_{i}")
+            if url:
+                lost_photo_url = url
+                break
+        if not lost_photo_url:
+            lost_photo_url = lost_dog.get("photo_url", "")
+
+        created_at = lost_dog.get("created_at")
+        lost_at = created_at.strftime("%Y-%m-%d %H:%M") if created_at else ""
+
+        items.append(FinderMatchItem(
+            lost_dog_id=dog_id,
+            lost_dog_name=lost_dog.get("name", ""),
+            lost_dog_photo_url=lost_photo_url,
+            similarity_percent=similarity,
+            owner_name=lost_dog.get("owner_name", ""),
+            owner_phone=lost_dog.get("owner_phone", ""),
+            owner_email=lost_dog.get("owner_email", ""),
+            lost_dog_size=lost_dog.get("size", ""),
+            lost_dog_color=lost_dog.get("color", ""),
+            lost_dog_sex=lost_dog.get("sex", ""),
+            lost_dog_description=lost_dog.get("description", ""),
+            lost_at=lost_at,
+        ))
+
+    items.sort(key=lambda x: x.similarity_percent, reverse=True)
+
+    return FinderMatchesResponse(
+        report_id=report_id,
+        found_dog_photo_url=found_photo_urls[0] if found_photo_urls else "",
+        found_dog_photo_urls=found_photo_urls,
+        matches=items,
+    )
 
 
 @router.patch("/found-report-status", summary="Activar o desactivar un reporte de perro encontrado")

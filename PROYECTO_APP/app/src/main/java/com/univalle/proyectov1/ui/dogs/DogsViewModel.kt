@@ -16,6 +16,7 @@ import com.univalle.proyectov1.core.result.UiState
 import com.univalle.proyectov1.feature.dogs.domain.model.Dog
 import com.univalle.proyectov1.feature.dogs.domain.model.DogMatch
 import com.univalle.proyectov1.feature.dogs.domain.model.FoundDogMatchForOwner
+import com.univalle.proyectov1.feature.dogs.domain.model.MyFoundReportWithMatches
 import com.univalle.proyectov1.feature.dogs.domain.model.MyReport
 import com.univalle.proyectov1.feature.dogs.domain.model.ReportType
 import com.univalle.proyectov1.feature.dogs.domain.repository.DogsRepository
@@ -70,6 +71,8 @@ class DogsViewModel @Inject constructor(
         _ownerMatches.value = emptyList()
         _deactivateState.value = UiState.Idle
         _reportActionState.value = UiState.Idle
+        _myFoundReports.value = emptyList()
+        _finderMatches.value = null
     }
 
     // ─── Register Lost Dog ────────────────────────────────────────────────────
@@ -128,6 +131,18 @@ class DogsViewModel @Inject constructor(
 
     private val _ownerMatchesLoading = MutableStateFlow(false)
     val ownerMatchesLoading: StateFlow<Boolean> = _ownerMatchesLoading
+
+    private val _myFoundReports = MutableStateFlow<List<MyReport>>(emptyList())
+    val myFoundReports: StateFlow<List<MyReport>> = _myFoundReports
+
+    private val _myFoundReportsLoading = MutableStateFlow(false)
+    val myFoundReportsLoading: StateFlow<Boolean> = _myFoundReportsLoading
+
+    private val _finderMatches = MutableStateFlow<MyFoundReportWithMatches?>(null)
+    val finderMatches: StateFlow<MyFoundReportWithMatches?> = _finderMatches
+
+    private val _finderMatchesLoading = MutableStateFlow(false)
+    val finderMatchesLoading: StateFlow<Boolean> = _finderMatchesLoading
 
     // ─── Phone gate ───────────────────────────────────────────────────────────
     suspend fun hasPhone(): Boolean = userRepository.hasPhone()
@@ -436,6 +451,23 @@ class DogsViewModel @Inject constructor(
             val result = dogsRepository.getMatchesForDog(dogId)
             _ownerMatches.value = result.getOrDefault(emptyList())
             _ownerMatchesLoading.value = false
+        }
+    }
+
+    fun loadMyFoundReports() {
+        viewModelScope.launch {
+            _myFoundReportsLoading.value = true
+            _myFoundReports.value = dogsRepository.getMyFoundReportsOnly()
+            _myFoundReportsLoading.value = false
+        }
+    }
+
+    fun loadMatchesForFoundReport(reportId: String) {
+        viewModelScope.launch {
+            _finderMatchesLoading.value = true
+            val result = dogsRepository.getMatchesForFoundReport(reportId)
+            _finderMatches.value = result.getOrNull()
+            _finderMatchesLoading.value = false
         }
     }
 

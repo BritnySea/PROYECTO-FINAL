@@ -233,6 +233,29 @@ def send_match_notification(owner_uid: str, dog_name: str, similarity_percent: f
         pass
 
 
+def send_match_notification_to_finder(finder_uid: str, similarity_percent: float) -> None:
+    token = get_user_fcm_token(finder_uid)
+    if not token:
+        return
+
+    message = messaging.Message(
+        notification=messaging.Notification(
+            title="¡Posible coincidencia encontrada!",
+            body=f"Un perro extraviado podria coincidir con el perro que reportaste como encontrado! Similitud: {similarity_percent:.0f}%",
+        ),
+        android=messaging.AndroidConfig(
+            priority="high",
+            notification=messaging.AndroidNotification(channel_id="woof_matches"),
+        ),
+        token=token,
+    )
+
+    try:
+        messaging.send(message)
+    except Exception:
+        pass
+
+
 def get_matches_for_dog(dog_id: str, top_k: int = 5) -> list[dict]:
     if _db is None:
         raise RuntimeError("Firebase no inicializado.")
