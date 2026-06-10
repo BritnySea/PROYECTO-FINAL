@@ -370,11 +370,16 @@ def get_found_report_by_id(report_id: str) -> dict | None:
     return data
 
 
-def update_found_report_status(report_id: str, active: bool) -> None:
+def update_found_report_status(report_id: str, active: bool, deactivation_reason: str | None = None) -> None:
     if _db is None:
         raise RuntimeError("Firebase no inicializado.")
     status = "active" if active else "inactive"
-    _db.collection("found_dog_reports").document(report_id).update({"status": status})
+    data: dict = {"status": status}
+    if active:
+        data["deactivation_reason"] = firestore.DELETE_FIELD
+    elif deactivation_reason:
+        data["deactivation_reason"] = deactivation_reason
+    _db.collection("found_dog_reports").document(report_id).update(data)
 
 
 def save_found_report(report_data: dict) -> str:

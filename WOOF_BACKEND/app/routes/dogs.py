@@ -616,6 +616,7 @@ async def update_found_report_status(
     current_user: Annotated[dict, Depends(verify_firebase_token)],
     report_id: str,
     active: bool,
+    deactivation_reason: str | None = None,
 ):
     uid = current_user.get("uid")
     report_doc = await asyncio.to_thread(firebase_service.get_found_report_by_id, report_id)
@@ -623,5 +624,5 @@ async def update_found_report_status(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reporte no encontrado.")
     if report_doc.get("found_by_uid") != uid:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para modificar este reporte.")
-    firebase_service.update_found_report_status(report_id, active)
+    firebase_service.update_found_report_status(report_id, active, deactivation_reason)
     return {"message": "Estado actualizado correctamente"}

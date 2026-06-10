@@ -425,10 +425,15 @@ export async function loadDashboard() {
   const inactiveFound = foundReports.filter(r => r.status && r.status !== 'active').length
 
   const resolvedLost  = lostDogs.filter(d =>
-    d.deactivation_reason === 'El perro ya fue recuperado' ||
-    d.deactivation_reason === 'Ya encontré a mi perro'
+    d.status !== 'active' &&
+    (d.deactivation_reason === 'El perro ya fue recuperado' ||
+     d.deactivation_reason === 'Ya encontré a mi perro')
   ).length
-  const resolvedFound = foundReports.filter(r => r.deactivation_reason === 'El perro ya fue entregado a su dueño').length
+  const resolvedFound = foundReports.filter(r =>
+    r.status !== 'active' &&
+    (r.deactivation_reason === 'El perro ya fue entregado a su dueño' ||
+     r.deactivation_reason === 'Fue devuelto al dueño')
+  ).length
   const totalResolved = resolvedLost + resolvedFound
 
   const totalFound   = foundReports.length

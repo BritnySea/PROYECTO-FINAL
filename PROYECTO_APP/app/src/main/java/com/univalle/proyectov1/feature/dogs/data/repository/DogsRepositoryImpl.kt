@@ -279,17 +279,18 @@ class DogsRepositoryImpl @Inject constructor(
                 val updateData = mutableMapOf<String, Any>("status" to newStatus)
                 if (!active && !reason.isNullOrBlank()) {
                     updateData["deactivation_reason"] = reason
+                } else if (active) {
+                    updateData["deactivation_reason"] = com.google.firebase.firestore.FieldValue.delete()
                 }
                 db.collection("lost_dogs").document(id).update(updateData).await()
             } else {
                 val token = getBearerToken()
-                api.updateFoundReportStatus(token = token, reportId = id, active = active)
-                if (!active && !reason.isNullOrBlank()) {
-                    try {
-                        db.collection("found_dog_reports").document(id)
-                            .update("deactivation_reason", reason).await()
-                    } catch (_: Exception) {}
-                }
+                api.updateFoundReportStatus(
+                    token = token,
+                    reportId = id,
+                    active = active,
+                    deactivationReason = if (!active) reason else null
+                )
             }
             Result.success(Unit)
         } catch (e: Exception) {

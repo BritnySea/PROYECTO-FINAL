@@ -160,7 +160,8 @@ interface WoofApiService {
     suspend fun updateFoundReportStatus(
         @Header("Authorization") token: String,
         @Query("report_id") reportId: String,
-        @Query("active") active: Boolean
+        @Query("active") active: Boolean,
+        @Query("deactivation_reason") deactivationReason: String? = null
     )
 
     @GET("api/v1/my-found-report-matches")
