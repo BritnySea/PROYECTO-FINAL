@@ -473,6 +473,18 @@ function openMyModal(data) {
   ].filter(Boolean)
 
   const fields = isLost ? lostFields : foundFields
+
+  if (!isLost) {
+    const deactivatedDate = data.deactivated_at?.toDate?.()
+    const createdDate     = data.created_at?.toDate?.()
+    if (deactivatedDate && createdDate) {
+      const diffDays = Math.round((deactivatedDate - createdDate) / (1000 * 60 * 60 * 24))
+      const closedStr = deactivatedDate.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
+      const label = data.returned_to_owner ? 'Permanencia hasta entrega al dueño' : 'Permanencia hasta cierre'
+      fields.push({ icon: '⏱️', label, value: `${diffDays} día${diffDays !== 1 ? 's' : ''} (cerrado: ${closedStr})` })
+    }
+  }
+
   document.getElementById('my-modal-fields').innerHTML = fields.map(f => `
     <div class="dog-modal-field">
       <p class="dog-modal-field-label">${f.icon} ${f.label}</p>
