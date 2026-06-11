@@ -218,10 +218,10 @@ INFO: Uvicorn running on http://0.0.0.0:8000
 
 | Campo | Valor |
 |---|---|
-| Email | obazanalarcon@gmail.com |
-| Contraseña | [COMPLETAR — usar la contraseña de la cuenta] |
+| Email | britny2003sea@gmail.com |
+| Contraseña | Sea151103. |
 
-> Esta es la cuenta de la autora del proyecto con datos reales de prueba en Firebase.
+> Cuenta de usuario de prueba con datos reales en Firebase.
 
 #### Nota sobre conectividad con el backend local
 
@@ -258,8 +258,8 @@ El panel también está disponible en: **https://refugiowoof.web.app**
 
 | Campo | Valor |
 |---|---|
-| Email | obazanalarcon@gmail.com |
-| Contraseña | [COMPLETAR — usar la contraseña de la cuenta admin] |
+| Email | miroslavasea@gmail.com |
+| Contraseña | Sea151103. |
 
 > Solo las cuentas con `role: "ADMIN"` en Firestore pueden acceder al panel.
 
