@@ -67,6 +67,37 @@ const _legendTop = {
   labels: { color: 'rgba(255,255,255,0.65)', font: { size: 12 }, boxWidth: 14 },
 }
 
+// ── Leyenda con porcentaje al costado (para donas) ─────────────────────────────
+function _legendPercent() {
+  return {
+    position: 'right',
+    labels: {
+      color: 'rgba(255,255,255,0.65)',
+      font: { size: 12 },
+      boxWidth: 14,
+      padding: 14,
+      generateLabels(chart) {
+        const { labels, datasets } = chart.data
+        if (!labels?.length || !datasets?.length) return []
+        const ds    = datasets[0]
+        const total = ds.data.reduce((a, b) => a + b, 0)
+        return labels.map((label, i) => {
+          const value = ds.data[i]
+          const pct   = total > 0 ? Math.round((value / total) * 100) : 0
+          return {
+            text: `${label}: ${pct}%`,
+            fillStyle: ds.backgroundColor[i],
+            strokeStyle: ds.borderColor[i],
+            lineWidth: ds.borderWidth,
+            hidden: false,
+            index: i,
+          }
+        })
+      },
+    },
+  }
+}
+
 // ── Datos del gráfico según filtro activo ─────────────────────────────────────
 function _getChartDataForFilter(filter, from, to) {
   const now = new Date()
@@ -217,7 +248,7 @@ function _renderStatusLost(active, inactive) {
       options: {
         responsive: true, maintainAspectRatio: false, cutout: '68%',
         animation: { animateRotate: true, duration: 900, easing: 'easeOutQuart' },
-        plugins: { legend: _legendBottom, tooltip: _tooltip },
+        plugins: { legend: _legendPercent(), tooltip: _tooltip },
       },
     })
   } catch (e) { console.warn('chart-status-lost:', e) }
@@ -237,7 +268,7 @@ function _renderStatusFound(active, inactive) {
       options: {
         responsive: true, maintainAspectRatio: false, cutout: '68%',
         animation: { animateRotate: true, duration: 900, easing: 'easeOutQuart' },
-        plugins: { legend: _legendBottom, tooltip: _tooltip },
+        plugins: { legend: _legendPercent(), tooltip: _tooltip },
       },
     })
   } catch (e) { console.warn('chart-status-found:', e) }
@@ -257,7 +288,7 @@ function _renderUsersStatus(active, blocked) {
       options: {
         responsive: true, maintainAspectRatio: false, cutout: '68%',
         animation: { animateRotate: true, duration: 900, easing: 'easeOutQuart' },
-        plugins: { legend: _legendBottom, tooltip: _tooltip },
+        plugins: { legend: _legendPercent(), tooltip: _tooltip },
       },
     })
   } catch (e) { console.warn('chart-users-status:', e) }
