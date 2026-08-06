@@ -2,6 +2,7 @@ package com.univalle.proyectov1.di
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.univalle.proyectov1.BuildConfig
 import com.univalle.proyectov1.feature.auth.data.repository.AuthRepositoryImpl
 import com.univalle.proyectov1.feature.auth.domain.repository.AuthRepository
 import com.univalle.proyectov1.feature.dogs.data.remote.WoofApiService
@@ -17,6 +18,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 @Module
@@ -38,12 +40,19 @@ object AppModule {
     @Provides
     @Singleton
     fun provideOkHttpClient(): OkHttpClient {
-        val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+        val builder = OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(120, TimeUnit.SECONDS)
+            .writeTimeout(120, TimeUnit.SECONDS)
+        // Solo registrar cuerpos HTTP en builds de depuración para evitar
+        // que tokens y datos personales queden en los logs de producción.
+        if (BuildConfig.DEBUG) {
+            val logging = HttpLoggingInterceptor().apply {
+                level = HttpLoggingInterceptor.Level.BODY
+            }
+            builder.addInterceptor(logging)
         }
-        return OkHttpClient.Builder()
-            .addInterceptor(logging)
-            .build()
+        return builder.build()
     }
 
     @Provides
@@ -52,7 +61,7 @@ object AppModule {
         // Para emulador: http://10.0.2.2:8000/
         // Para dispositivo real: IP local de la PC en la misma red WiFi (ver con ipconfig)
         return Retrofit.Builder()
-            .baseUrl("http://10.0.14.104:8000/")
+            .baseUrl("https://refugiowoof.up.railway.app/")
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Panel Administrativo WOOF</title>
+  <link rel="icon" type="image/png" href="img/logo_refugio.png" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+</head>
+<body>
+  <header class="dash-header">
+    <div class="dash-header-left">
+      <button class="btn-sidebar-toggle" id="btn-sidebar-toggle" type="button" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+      <div class="dash-brand">
+        <img src="img/logo_refugio.png" alt="Logo" onerror="this.style.display='none'" />
+        <div>
+          <p class="dash-brand-sub">Panel Administrativo</p>
+          <p class="dash-brand-name">Refugio WOOF</p>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:16px;">
+      <span id="admin-name" style="font-size:13px; color:rgba(255,255,255,0.45);"></span>
+      <button class="btn-logout" id="btn-logout" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        <span class="btn-logout-text">Cerrar sesión</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="dash-layout">
+    <!-- ── Sidebar ── -->
+    <aside class="sidebar">
+      <nav class="sidebar-nav">
+
+        <button class="nav-item" data-section="profile">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          Mi perfil
+        </button>
+
+        <button class="nav-item" data-section="users">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          Usuarios registrados
+        </button>
+
+        <button class="nav-item active" data-section="dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <rect x="3" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/>
+            <rect x="14" y="14" width="7" height="7" rx="1"/>
+          </svg>
+          Dashboard
+        </button>
+
+        <button class="nav-item" data-section="list-lost">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+          Registro de perros extraviados
+        </button>
+
+        <button class="nav-item" data-section="list-found">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10 9 9 9 8 9"/>
+          </svg>
+          Registro de perros encontrados
+        </button>
+
+        <div class="sidebar-divider"></div>
+
+        <button class="nav-item" data-section="report-found">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+          </svg>
+          Registrar perro del refugio
+        </button>
+
+        <button class="nav-item" data-section="my-reports">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <line x1="10" y1="9"  x2="8" y2="9"/>
+          </svg>
+          Mis reportes
+        </button>
+
+      </nav>
+    </aside>
+
+    <!-- ── Contenido principal ── -->
+    <main class="content-area" id="content-area">
+
+      <!-- ══ SECCIÓN: DASHBOARD ══ -->
+      <div id="section-dashboard" class="section-content">
+
+        <div class="section-header" style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px">
+          <div>
+            <h2 class="section-title">Dashboard</h2>
+            <p class="section-sub">Resumen general del sistema WOOF</p>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn-pdf" id="btn-pdf-dashboard" type="button">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="12" y1="18" x2="12" y2="12"/>
+                <polyline points="9 15 12 18 15 15"/>
+              </svg>
+              Exportar PDF
+            </button>
+            <button class="btn-refresh" id="btn-refresh-dashboard" type="button">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+              Actualizar
+            </button>
+          </div>
+        </div>
+
+        <!-- ── KPI Cards ── -->
+        <div class="kpi-grid">
+
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:rgba(79,195,247,0.12)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="#4FC3F7" stroke-width="1.8" stroke-linecap="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <div>
+              <p class="kpi-value" id="kpi-users">—</p>
+              <p class="kpi-label">Usuarios registrados</p>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:rgba(239,83,80,0.12)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="#EF5350" stroke-width="1.8" stroke-linecap="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+              </svg>
+            </div>
+            <div>
+              <p class="kpi-value" id="kpi-blocked">—</p>
+              <p class="kpi-label">Usuarios bloqueados</p>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:rgba(212,175,55,0.12)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="#D4AF37" stroke-width="1.8" stroke-linecap="round">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+              </svg>
+            </div>
+            <div>
+              <p class="kpi-value" id="kpi-lost-active">—</p>
+              <p class="kpi-label">Perros extraviados activos</p>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:rgba(76,175,80,0.12)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="#4CAF50" stroke-width="1.8" stroke-linecap="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+            </div>
+            <div>
+              <p class="kpi-value" id="kpi-found">—</p>
+              <p class="kpi-label">Reportes de encontrados</p>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:rgba(171,71,188,0.12)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="#AB47BC" stroke-width="1.8" stroke-linecap="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
+            </div>
+            <div>
+              <p class="kpi-value" id="kpi-matches">—</p>
+              <p class="kpi-label">Coincidencias IA ≥ 50%</p>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:rgba(38,198,218,0.12)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="#26C6DA" stroke-width="1.8" stroke-linecap="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+            </div>
+            <div>
+              <p class="kpi-value" id="kpi-resolved">—</p>
+              <p class="kpi-label">Casos resueltos</p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ── Fila 1: Actividad de reportes ── -->
+        <div class="charts-row">
+          <div class="chart-card" style="grid-column:span 2">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:14px">
+              <p class="chart-title" style="margin-bottom:0">Actividad de reportes</p>
+              <div style="display:flex; gap:6px; flex-wrap:wrap">
+                <button class="filter-tab activity-filter-tab" data-activity-filter="daily">Diario</button>
+                <button class="filter-tab activity-filter-tab" data-activity-filter="weekly">Semanal</button>
+                <button class="filter-tab activity-filter-tab active" data-activity-filter="monthly">Mensual</button>
+                <button class="filter-tab activity-filter-tab" data-activity-filter="range">Rango</button>
+              </div>
+            </div>
+            <div class="date-range-inputs hidden" id="activity-date-range-inputs" style="margin-bottom:12px">
+              <div class="date-range-group">
+                <label class="date-range-label">Desde</label>
+                <input type="date" id="activity-date-from" class="date-input" />
+              </div>
+              <div class="date-range-group">
+                <label class="date-range-label">Hasta</label>
+                <input type="date" id="activity-date-to" class="date-input" />
+              </div>
+              <button class="btn-apply-range" id="activity-btn-apply-range" type="button">Aplicar</button>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="chart-monthly"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Fila 2: Donas ── -->
+        <div class="charts-row">
+          <div class="chart-card">
+            <p class="chart-title">Estado — perros extraviados</p>
+            <div class="chart-wrap chart-wrap--donut">
+              <canvas id="chart-status-lost"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <p class="chart-title">Estado — perros encontrados</p>
+            <div class="chart-wrap chart-wrap--donut">
+              <canvas id="chart-status-found"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <p class="chart-title">Usuarios activos vs bloqueados</p>
+            <div class="chart-wrap chart-wrap--donut">
+              <canvas id="chart-users-status"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Fila 3: Permanencia ── -->
+        <div class="charts-row" style="margin-bottom:36px">
+          <div class="chart-card" style="grid-column:span 2">
+            <div style="margin-bottom:14px">
+              <p class="chart-title" style="margin-bottom:4px">Permanencia en el refugio de los perritos encontrados</p>
+              <p style="font-size:12px; color:rgba(255,255,255,0.45); margin:0">
+                Solo tus reportes registrados · Dorado = aún activo · Verde = devuelto al dueño
+              </p>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="chart-permanencia"></canvas>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ══ SECCIÓN: MI PERFIL ══ -->
+      <div id="section-profile" class="section-content hidden">
+        <div class="section-header">
+          <h2 class="section-title">Mi perfil</h2>
+          <p class="section-sub">Información de tu cuenta de administrador</p>
+        </div>
+        <div class="form-panel">
+          <div class="form-card" style="padding:28px 24px; margin-bottom:0">
+
+            <div class="profile-avatar" id="profile-avatar"></div>
+
+            <div class="panel-block" style="margin-top:24px">
+              <p class="panel-label">Nombre</p>
+              <div class="input-wrapper">
+                <span class="input-icon">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                </span>
+                <input type="text" id="profile-name" placeholder="Tu nombre" />
+              </div>
+            </div>
+
+            <div class="panel-block">
+              <p class="panel-label">Correo electrónico</p>
+              <div class="input-wrapper" style="border-color:rgba(255,255,255,0.06); opacity:0.75; cursor:default">
+                <span class="input-icon">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                    <rect x="2" y="4" width="20" height="16" rx="2"/>
+                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                  </svg>
+                </span>
+                <span id="profile-email"
+                  style="flex:1; font-size:15px; color:rgba(255,255,255,0.85);
+                         overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
+              </div>
+              <p style="font-size:11px; color:var(--muted); margin-top:4px; padding-left:4px">
+                El correo no se puede cambiar desde aquí
+              </p>
+            </div>
+
+            <div class="panel-block">
+              <p class="panel-label">Número de celular</p>
+              <div class="input-wrapper" id="profile-phone-wrapper">
+                <span class="input-icon">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.77a16 16 0 0 0 6 6l.93-.93a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16z"/>
+                  </svg>
+                </span>
+                <input type="tel" id="profile-phone" placeholder="Ej: 3001234567"
+                  maxlength="10" inputmode="numeric" pattern="[0-9]*" />
+              </div>
+              <p class="field-error" id="profile-phone-error"></p>
+            </div>
+
+            <button class="btn-submit" id="btn-save-profile" type="button">
+              Guardar cambios
+            </button>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ SECCIÓN: USUARIOS REGISTRADOS ══ -->
+      <div id="section-users" class="section-content hidden">
+        <div class="section-header" style="display:flex; justify-content:space-between; align-items:flex-end">
+          <div>
+            <h2 class="section-title">Usuarios registrados</h2>
+            <p class="section-sub">Todas las personas con cuenta en el sistema</p>
+          </div>
+          <button class="btn-refresh" id="btn-refresh-users" type="button">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <polyline points="23 4 23 10 17 10"/>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+            Actualizar
+          </button>
+        </div>
+        <div class="search-bar-wrap" style="margin-bottom:16px">
+          <div class="input-wrapper" style="max-width:340px">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+            </span>
+            <input type="text" id="users-search" placeholder="Buscar por nombre o correo..." />
+          </div>
+        </div>
+        <div id="users-list-content">
+          <p class="empty-state">Cargando...</p>
+        </div>
+      </div>
+
+      <!-- ══ SECCIÓN: PERROS EXTRAVIADOS ══ -->
+      <div id="section-list-lost" class="section-content hidden">
+        <div class="section-header" style="display:flex; justify-content:space-between; align-items:flex-end">
+          <div>
+            <h2 class="section-title">Registro de perros extraviados</h2>
+            <p class="section-sub">Todos los perros registrados como extraviados</p>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn-pdf" id="btn-pdf-lost" type="button">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="12" y1="18" x2="12" y2="12"/>
+                <polyline points="9 15 12 18 15 15"/>
+              </svg>
+              Exportar PDF
+            </button>
+            <button class="btn-refresh" id="btn-refresh-lost" type="button">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+              Actualizar
+            </button>
+          </div>
+        </div>
+        <div class="search-bar-wrap" style="margin-bottom:12px">
+          <div class="input-wrapper" style="max-width:340px">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+            </span>
+            <input type="text" id="lost-search" placeholder="Buscar por nombre, color, tamaño o sexo..." />
+          </div>
+        </div>
+        <div class="status-filter-bar" id="status-filter-bar">
+          <span class="filter-bar-label">Estado:</span>
+          <button class="filter-tab active" data-status="all">Todos</button>
+          <button class="filter-tab" data-status="active">Activos</button>
+          <button class="filter-tab" data-status="inactive">Inactivos</button>
+        </div>
+        <div class="date-filter-bar" id="date-filter-bar">
+          <button class="filter-tab active" data-filter="all">Todos</button>
+          <button class="filter-tab" data-filter="daily">Diario</button>
+          <button class="filter-tab" data-filter="weekly">Semanal</button>
+          <button class="filter-tab" data-filter="monthly">Mensual</button>
+          <button class="filter-tab" data-filter="range">Rango de fechas</button>
+        </div>
+        <div class="date-range-inputs hidden" id="date-range-inputs">
+          <div class="date-range-group">
+            <label class="date-range-label">Desde</label>
+            <input type="date" id="date-from" class="date-input" />
+          </div>
+          <div class="date-range-group">
+            <label class="date-range-label">Hasta</label>
+            <input type="date" id="date-to" class="date-input" />
+          </div>
+          <button class="btn-apply-range" id="btn-apply-range" type="button">Aplicar</button>
+        </div>
+        <div id="list-lost-content">
+          <p class="empty-state">Cargando...</p>
+        </div>
+      </div>
+
+      <!-- ══ SECCIÓN: PERROS ENCONTRADOS ══ -->
+      <div id="section-list-found" class="section-content hidden">
+        <div class="section-header" style="display:flex; justify-content:space-between; align-items:flex-end">
+          <div>
+            <h2 class="section-title">Registro de perros encontrados</h2>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn-pdf" id="btn-pdf-found" type="button">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="12" y1="18" x2="12" y2="12"/>
+                <polyline points="9 15 12 18 15 15"/>
+              </svg>
+              Exportar PDF
+            </button>
+            <button class="btn-refresh" id="btn-refresh-found" type="button">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+              Actualizar
+            </button>
+          </div>
+        </div>
+        <div class="filter-row" style="margin-bottom:12px">
+          <div class="input-wrapper" style="max-width:340px">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+            </span>
+            <input type="text" id="found-search" placeholder="Buscar por color, tamaño o sexo..." />
+          </div>
+        </div>
+        <div class="status-filter-bar" id="found-status-filter-bar">
+          <span class="filter-bar-label">Estado:</span>
+          <button class="filter-tab active" data-status="all">Todos</button>
+          <button class="filter-tab" data-status="active">Activos</button>
+          <button class="filter-tab" data-status="inactive">Inactivos</button>
+        </div>
+        <div class="date-filter-bar" id="found-date-filter-bar">
+          <button class="filter-tab active" data-filter="all">Todos</button>
+          <button class="filter-tab" data-filter="daily">Diario</button>
+          <button class="filter-tab" data-filter="weekly">Semanal</button>
+          <button class="filter-tab" data-filter="monthly">Mensual</button>
+          <button class="filter-tab" data-filter="range">Rango de fechas</button>
+        </div>
+        <div class="date-range-inputs hidden" id="found-date-range-inputs">
+          <div class="date-range-group">
+            <label class="date-range-label">Desde</label>
+            <input type="date" id="found-date-from" class="date-input" />
+          </div>
+          <div class="date-range-group">
+            <label class="date-range-label">Hasta</label>
+            <input type="date" id="found-date-to" class="date-input" />
+          </div>
+          <button class="btn-apply-range" id="found-btn-apply-range" type="button">Aplicar</button>
+        </div>
+        <div id="list-found-content">
+          <p class="empty-state">Cargando...</p>
+        </div>
+      </div>
+
+      <!-- ══ SECCIÓN: ENCONTRÉ UN PERRO ══ -->
+      <div id="section-report-found" class="section-content hidden">
+        <div class="section-header">
+          <h2 class="section-title">Registrar perro del refugio</h2>
+          <p class="section-sub">Sube hasta 3 fotos para buscar coincidencias con perros perdidos</p>
+        </div>
+        <div class="form-panel">
+
+          <div class="panel-block">
+            <p class="panel-label">Fotos del perro <span class="req-mark">*</span>
+              <span style="color:var(--muted);font-weight:400;font-size:12px;margin-left:4px">(hasta 3 fotos)</span>
+            </p>
+
+            <!-- Banner informativo -->
+            <div class="photo-info-banner">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="var(--gold)" stroke-width="1.8" stroke-linecap="round" style="flex-shrink:0;margin-top:1px">
+                <rect x="3" y="3" width="18" height="14" rx="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+              <div>
+                <p class="photo-info-title">Agrega hasta 3 fotos del perro</p>
+                <p class="photo-info-desc">Fotos desde diferentes ángulos (frente y costado) mejoran la precisión de búsqueda. Mínimo 1 foto obligatoria.</p>
+              </div>
+            </div>
+
+            <div class="photos-upload-grid">
+
+              <!-- Slot 1 (requerida) -->
+              <div class="photo-slot-wrap">
+                <div class="upload-box" id="upload-box-1">
+                  <input type="file" id="photo-input-1" accept="image/*" style="display:none" />
+                  <div class="upload-placeholder" id="upload-placeholder-1">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
+                      stroke="#D4AF37" stroke-width="1.5" stroke-linecap="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    <p>Foto 1</p>
+                    <span class="slot-badge slot-badge--required">Requerida</span>
+                  </div>
+                  <img id="upload-preview-1" src="" alt="" style="display:none" />
+                  <div id="photo-loading-overlay-1" class="photo-overlay hidden">
+                    <div class="spinner white"></div>
+                    <span style="color:rgba(255,255,255,0.85);font-size:11px;margin-top:5px">Verificando...</span>
+                  </div>
+                  <div id="photo-valid-badge-1" class="photo-valid-badge hidden">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                      stroke="#fff" stroke-width="3" stroke-linecap="round">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  </div>
+                  <div id="photo-change-label-1" class="photo-change-label hidden">Cambiar</div>
+                  <div id="photo-error-overlay-1" class="photo-overlay photo-overlay--error hidden">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+                      stroke="#EF5350" stroke-width="1.8" stroke-linecap="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="15" y1="9" x2="9" y2="15"/>
+                      <line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                    <span style="color:rgba(255,255,255,0.85);font-size:10px;margin-top:3px">Cambiar foto</span>
+                  </div>
+                </div>
+                <div id="photo-status-row-1" class="photo-status-row photo-status-row--hint">
+                  <span>Foto principal</span>
+                </div>
+                <p class="field-error" id="photo-error-1"></p>
+              </div>
+
+              <!-- Slot 2 (opcional) -->
+              <div class="photo-slot-wrap">
+                <div class="upload-box" id="upload-box-2">
+                  <input type="file" id="photo-input-2" accept="image/*" style="display:none" />
+                  <div class="upload-placeholder" id="upload-placeholder-2">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
+                      stroke="#D4AF37" stroke-width="1.5" stroke-linecap="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    <p>Foto 2</p>
+                    <span class="slot-badge slot-badge--optional">Opcional</span>
+                  </div>
+                  <img id="upload-preview-2" src="" alt="" style="display:none" />
+                  <div id="photo-loading-overlay-2" class="photo-overlay hidden">
+                    <div class="spinner white"></div>
+                    <span style="color:rgba(255,255,255,0.85);font-size:11px;margin-top:5px">Verificando...</span>
+                  </div>
+                  <div id="photo-valid-badge-2" class="photo-valid-badge hidden">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                      stroke="#fff" stroke-width="3" stroke-linecap="round">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  </div>
+                  <div id="photo-change-label-2" class="photo-change-label hidden">Cambiar</div>
+                  <div id="photo-error-overlay-2" class="photo-overlay photo-overlay--error hidden">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+                      stroke="#EF5350" stroke-width="1.8" stroke-linecap="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="15" y1="9" x2="9" y2="15"/>
+                      <line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                    <span style="color:rgba(255,255,255,0.85);font-size:10px;margin-top:3px">Cambiar foto</span>
+                  </div>
+                  <!-- Candado: visible hasta que se agregue la Foto 1 -->
+                  <div class="photo-lock-overlay" id="photo-lock-overlay-2">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                      stroke="rgba(255,255,255,0.4)" stroke-width="1.8" stroke-linecap="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2"/>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    <span>Agrega la<br>Foto 1 primero</span>
+                  </div>
+                </div>
+                <div id="photo-status-row-2" class="photo-status-row photo-status-row--hint">
+                  <span>Foto adicional</span>
+                </div>
+                <p class="field-error" id="photo-error-2"></p>
+              </div>
+
+              <!-- Slot 3 (opcional) -->
+              <div class="photo-slot-wrap">
+                <div class="upload-box" id="upload-box-3">
+                  <input type="file" id="photo-input-3" accept="image/*" style="display:none" />
+                  <div class="upload-placeholder" id="upload-placeholder-3">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
+                      stroke="#D4AF37" stroke-width="1.5" stroke-linecap="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    <p>Foto 3</p>
+                    <span class="slot-badge slot-badge--optional">Opcional</span>
+                  </div>
+                  <img id="upload-preview-3" src="" alt="" style="display:none" />
+                  <div id="photo-loading-overlay-3" class="photo-overlay hidden">
+                    <div class="spinner white"></div>
+                    <span style="color:rgba(255,255,255,0.85);font-size:11px;margin-top:5px">Verificando...</span>
+                  </div>
+                  <div id="photo-valid-badge-3" class="photo-valid-badge hidden">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                      stroke="#fff" stroke-width="3" stroke-linecap="round">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  </div>
+                  <div id="photo-change-label-3" class="photo-change-label hidden">Cambiar</div>
+                  <div id="photo-error-overlay-3" class="photo-overlay photo-overlay--error hidden">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+                      stroke="#EF5350" stroke-width="1.8" stroke-linecap="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="15" y1="9" x2="9" y2="15"/>
+                      <line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                    <span style="color:rgba(255,255,255,0.85);font-size:10px;margin-top:3px">Cambiar foto</span>
+                  </div>
+                  <!-- Candado: visible hasta que se agregue la Foto 1 -->
+                  <div class="photo-lock-overlay" id="photo-lock-overlay-3">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                      stroke="rgba(255,255,255,0.4)" stroke-width="1.8" stroke-linecap="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2"/>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    <span>Agrega la<br>Foto 1 primero</span>
+                  </div>
+                </div>
+                <div id="photo-status-row-3" class="photo-status-row photo-status-row--hint">
+                  <span>Foto adicional</span>
+                </div>
+                <p class="field-error" id="photo-error-3"></p>
+              </div>
+
+            </div>
+            <p class="field-error" id="photo-error"></p>
+          </div>
+
+          <div class="panel-block">
+            <p class="panel-label">Tamaño <span class="req-mark">*</span></p>
+            <div class="chip-group" id="chips-size">
+              <button type="button" class="chip" data-value="Grande">Grande</button>
+              <button type="button" class="chip" data-value="Mediano">Mediano</button>
+              <button type="button" class="chip" data-value="Pequeño">Pequeño</button>
+            </div>
+            <p class="field-error" id="size-error"></p>
+          </div>
+
+          <div class="panel-block">
+            <p class="panel-label">Color principal <span class="req-mark">*</span></p>
+            <div class="chip-group" id="chips-color">
+              <button type="button" class="chip" data-value="Negro">Negro</button>
+              <button type="button" class="chip" data-value="Blanco">Blanco</button>
+              <button type="button" class="chip" data-value="Marrón">Marrón</button>
+              <button type="button" class="chip" data-value="Dorado/Amarillo">Dorado/Amarillo</button>
+              <button type="button" class="chip" data-value="Gris">Gris</button>
+              <button type="button" class="chip" data-value="Atigrado">Atigrado</button>
+              <button type="button" class="chip" data-value="Manchado/Pinto">Manchado/Pinto</button>
+              <button type="button" class="chip" data-value="Otro">Otro</button>
+            </div>
+            <div id="color-other-wrapper" class="hidden" style="margin-top:10px">
+              <div class="input-wrapper" id="color-other-input-wrapper">
+                <input type="text" id="color-other" placeholder="Describe el color" maxlength="20" />
+              </div>
+              <p id="color-other-counter" style="text-align:right; font-size:11px; color:rgba(255,255,255,0.35); margin:3px 4px 0 0">0/20</p>
+            </div>
+            <p class="field-error" id="color-error"></p>
+          </div>
+
+          <div class="panel-block">
+            <p class="panel-label">Sexo <span style="color:var(--muted); font-weight:400">(opcional)</span></p>
+            <div class="chip-group" id="chips-sex">
+              <button type="button" class="chip" data-value="Macho">Macho</button>
+              <button type="button" class="chip" data-value="Hembra">Hembra</button>
+            </div>
+          </div>
+
+          <div class="panel-block">
+            <p class="panel-label">Señas particulares <span style="color:var(--muted); font-weight:400">(opcional)</span></p>
+            <div class="input-wrapper" style="height:auto; padding:12px 14px; align-items:flex-start">
+              <textarea id="signs" rows="3" placeholder="Ej: mancha en el ojo, collar azul, sin collar..."
+                maxlength="150"
+                style="flex:1; background:transparent; border:none; outline:none; color:var(--white);
+                       font-size:15px; caret-color:var(--gold); resize:none; font-family:inherit;"></textarea>
+            </div>
+            <p id="signs-counter" style="text-align:right; font-size:11px; color:rgba(255,255,255,0.35); margin:3px 4px 0 0">0/150</p>
+          </div>
+
+          <div class="panel-divider"></div>
+          <p class="panel-section-title">Tus datos de contacto</p>
+
+          <div class="panel-block">
+            <p class="panel-label">Tu nombre <span class="req-mark">*</span></p>
+            <div class="input-wrapper" id="name-wrapper">
+              <span class="input-icon">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+              </span>
+              <input type="text" id="reporter-name" placeholder="Nombre completo" maxlength="50" />
+            </div>
+            <p id="reporter-name-counter" style="text-align:right; font-size:11px; color:rgba(255,255,255,0.35); margin:3px 4px 0 0">0/50</p>
+            <p class="field-error" id="name-error"></p>
+          </div>
+
+          <div class="panel-block">
+            <p class="panel-label">Teléfono <span class="req-mark">*</span></p>
+            <div class="input-wrapper" id="phone-wrapper">
+              <span class="input-icon">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.77a16 16 0 0 0 6 6l.93-.93a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16z"/>
+                </svg>
+              </span>
+              <input type="tel" id="reporter-phone" placeholder="Ej: 3001234567" />
+            </div>
+            <p class="field-error" id="phone-error"></p>
+          </div>
+
+          <div class="panel-block">
+            <p class="panel-label">Correo electrónico <span class="req-mark">*</span></p>
+            <div class="input-wrapper" id="email-r-wrapper">
+              <span class="input-icon">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                  <rect x="2" y="4" width="20" height="16" rx="2"/>
+                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                </svg>
+              </span>
+              <input type="email" id="reporter-email" placeholder="correo@ejemplo.com" />
+            </div>
+            <p class="field-error" id="email-r-error"></p>
+          </div>
+
+          <button class="btn-submit" id="btn-match" type="button" disabled>
+            Buscar coincidencias
+          </button>
+
+        </div>
+      </div>
+
+      <!-- ══ SECCIÓN: MIS REPORTES ══ -->
+      <div id="section-my-reports" class="section-content hidden">
+        <div class="section-header" style="display:flex; justify-content:space-between; align-items:flex-end">
+          <div>
+            <h2 class="section-title">Mis reportes</h2>
+            <p class="section-sub">Reportes enviados por ti</p>
+          </div>
+          <button class="btn-refresh" id="btn-refresh-my-reports" type="button">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <polyline points="23 4 23 10 17 10"/>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+            Actualizar
+          </button>
+        </div>
+
+        <!-- Buscador (tamaño, color, sexo, nombre) -->
+        <div class="search-bar-wrap" style="margin-bottom:12px">
+          <div class="input-wrapper" style="max-width:420px">
+            <span class="input-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+            </span>
+            <input type="text" id="my-reports-search"
+              placeholder="Buscar por tamaño, color o sexo..." />
+          </div>
+        </div>
+
+        <!-- Filtro por estado -->
+        <div class="status-filter-bar" id="my-status-filter-bar">
+          <span class="filter-bar-label">Estado:</span>
+          <button class="filter-tab active" data-status="all">Todos</button>
+          <button class="filter-tab" data-status="active">Activos</button>
+          <button class="filter-tab" data-status="inactive">Inactivos</button>
+        </div>
+
+        <!-- Filtro por fecha -->
+        <div class="date-filter-bar" id="my-date-filter-bar">
+          <button class="filter-tab active" data-filter="all">Todos</button>
+          <button class="filter-tab" data-filter="daily">Diario</button>
+          <button class="filter-tab" data-filter="weekly">Semanal</button>
+          <button class="filter-tab" data-filter="monthly">Mensual</button>
+          <button class="filter-tab" data-filter="range">Rango de fechas</button>
+        </div>
+
+        <!-- Rango de fechas -->
+        <div class="date-range-inputs hidden" id="my-date-range-inputs">
+          <div class="date-range-group">
+            <label class="date-range-label">Desde</label>
+            <input type="date" id="my-date-from" class="date-input" />
+          </div>
+          <div class="date-range-group">
+            <label class="date-range-label">Hasta</label>
+            <input type="date" id="my-date-to" class="date-input" />
+          </div>
+          <button class="btn-apply-range" id="my-btn-apply-range" type="button">Aplicar</button>
+        </div>
+
+        <!-- Contenido -->
+        <div id="my-reports-content">
+          <p class="empty-state">Cargando...</p>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ══ Modal detalle perro extraviado ══ -->
+  <div class="dog-modal-overlay hidden" id="dog-modal-overlay">
+    <div class="dog-modal" id="dog-modal">
+      <button class="dog-modal-close" id="dog-modal-close" type="button" aria-label="Cerrar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      <div class="dog-modal-photo-wrap">
+        <img id="dog-modal-photo" class="dog-modal-photo" src="" alt="" />
+        <div id="dog-modal-placeholder" class="dog-modal-placeholder hidden">🐾</div>
+        <div id="dog-modal-thumbs" class="dog-modal-thumbs hidden"></div>
+      </div>
+      <div class="dog-modal-body">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:8px">
+          <h3 class="dog-modal-name" id="dog-modal-name"></h3>
+          <span class="dog-modal-status-tag" id="dog-modal-status-tag"></span>
+        </div>
+        <div class="dog-modal-divider"></div>
+        <div class="dog-modal-fields" id="dog-modal-fields"></div>
+        <div class="dog-modal-divider" style="margin-top:24px"></div>
+        <button class="btn-toggle-status" id="btn-toggle-status" type="button">
+          Desactivar publicación
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Modal confirmación estado ══ -->
+  <div class="confirm-modal-overlay hidden" id="confirm-modal-overlay">
+    <div class="confirm-modal-box">
+      <p class="confirm-modal-title" id="confirm-modal-title"></p>
+      <p class="confirm-modal-desc"  id="confirm-modal-desc"></p>
+      <div class="confirm-modal-actions">
+        <button class="btn-confirm-no"  id="btn-confirm-no"  type="button">No</button>
+        <button class="btn-confirm-yes" id="btn-confirm-yes" type="button"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Modal usuario ══ -->
+  <div class="dog-modal-overlay hidden" id="user-modal-overlay">
+    <div class="dog-modal user-modal" id="user-modal">
+      <button class="dog-modal-close" id="user-modal-close" type="button" aria-label="Cerrar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      <div class="user-modal-header">
+        <div class="user-modal-avatar" id="user-modal-avatar"></div>
+        <div>
+          <h3 class="user-modal-name"  id="user-modal-name"></h3>
+          <p  class="user-modal-email" id="user-modal-email"></p>
+          <p  class="user-modal-phone" id="user-modal-phone"></p>
+        </div>
+      </div>
+      <div class="dog-modal-divider"></div>
+
+      <p class="panel-section-title" style="margin-bottom:10px">Perros extraviados reportados</p>
+      <div id="user-modal-lost"></div>
+
+      <div class="dog-modal-divider" style="margin-top:20px"></div>
+
+      <p class="panel-section-title" style="margin-bottom:10px">Perros encontrados reportados</p>
+      <div id="user-modal-found"></div>
+
+      <div class="dog-modal-divider" style="margin-top:20px"></div>
+      <button class="btn-user-block" id="user-modal-block-btn" type="button">Bloquear cuenta</button>
+    </div>
+  </div>
+
+  <!-- ══ Modal reporte encontrado ══ -->
+  <div class="dog-modal-overlay hidden" id="found-modal-overlay">
+    <div class="dog-modal" id="found-modal" style="max-width:560px; width:92%">
+      <button class="dog-modal-close" id="found-modal-close" type="button" aria-label="Cerrar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      <div class="dog-modal-photo-wrap">
+        <img id="found-modal-photo" class="dog-modal-photo" src="" alt="Perro encontrado" />
+        <div id="found-modal-placeholder" class="dog-modal-placeholder hidden">🐾</div>
+        <div id="found-modal-thumbs" class="dog-modal-thumbs hidden"></div>
+      </div>
+      <div class="dog-modal-body">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:8px">
+          <h3 class="dog-modal-name">Reporte de perro encontrado</h3>
+          <span class="dog-modal-status-tag" id="found-modal-status-tag"></span>
+        </div>
+        <div class="dog-modal-divider"></div>
+        <div class="dog-modal-fields" id="found-modal-fields"></div>
+
+        <div class="dog-modal-divider" style="margin-top:24px"></div>
+        <button class="btn-toggle-status" id="btn-toggle-found-status" type="button">
+          Desactivar publicación
+        </button>
+
+        <div class="dog-modal-divider" style="margin-top:24px"></div>
+        <p class="panel-section-title" style="margin-bottom:12px">Posibles coincidencias</p>
+        <div id="found-modal-matches"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Modal consejo de foto ══ -->
+  <div class="confirm-modal-overlay hidden" id="photo-tip-overlay">
+    <div class="confirm-modal-box" style="max-width:440px">
+      <p class="confirm-modal-title" style="color:var(--gold); margin-bottom:14px">Consejo para mejor resultado</p>
+      <img src="img/dog_photo_reference.png" alt="Ejemplo de foto correcta"
+        style="width:100%; border-radius:12px; margin-bottom:14px; object-fit:contain; background:#111; display:block;" />
+      <p class="confirm-modal-desc">
+        Toma la foto de frente al perro. Nuestro modelo de IA fue entrenado principalmente con fotos frontales, aunque también funciona con otros ángulos.<br><br>
+        La foto debe ser clara y bien iluminada.
+      </p>
+      <div class="confirm-modal-actions">
+        <button class="btn-confirm-no" id="photo-tip-cancel" type="button">Cancelar</button>
+        <button class="btn-confirm-yes" id="photo-tip-continue" type="button"
+          style="background:var(--gold); color:#000; font-weight:700">
+          Entendido, continuar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Modal: confirmar bloqueo / desbloqueo de usuario ══ -->
+  <div class="confirm-modal-overlay hidden" id="user-block-confirm-overlay">
+    <div class="confirm-modal-box">
+      <p class="confirm-modal-title" id="user-block-confirm-title"></p>
+      <p class="confirm-modal-desc"  id="user-block-confirm-desc"></p>
+      <div class="confirm-modal-actions">
+        <button class="btn-confirm-no"  id="user-block-cancel"  type="button">Cancelar</button>
+        <button class="btn-confirm-yes" id="user-block-confirm" type="button"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Modal: detalle de mis reportes ══ -->
+  <div class="dog-modal-overlay hidden" id="my-modal-overlay">
+    <div class="dog-modal" id="my-modal">
+      <button class="dog-modal-close" id="my-modal-close" type="button" aria-label="Cerrar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      <div class="dog-modal-photo-wrap">
+        <img id="my-modal-photo" class="dog-modal-photo my-modal-photo-fit" src="" alt="" />
+        <div id="my-modal-placeholder" class="dog-modal-placeholder hidden">🐾</div>
+        <div id="my-modal-thumbs" class="dog-modal-thumbs hidden"></div>
+      </div>
+      <div class="dog-modal-body">
+        <p id="my-modal-type" style="font-size:12px; font-weight:600; margin-bottom:4px"></p>
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:8px">
+          <h3 class="dog-modal-name" id="my-modal-name"></h3>
+          <span class="dog-modal-status-tag" id="my-modal-status-tag"></span>
+        </div>
+        <div class="dog-modal-divider"></div>
+        <div class="dog-modal-fields" id="my-modal-fields"></div>
+        <div class="dog-modal-divider" style="margin-top:24px"></div>
+        <button class="btn-toggle-status" id="my-btn-toggle-status" type="button">
+          Desactivar publicación
+        </button>
+        <div id="my-modal-matches-section" class="hidden">
+          <div class="dog-modal-divider" style="margin-top:24px"></div>
+          <p class="panel-section-title" style="margin-bottom:12px" id="my-modal-matches-title">Posibles coincidencias</p>
+          <div id="my-modal-matches"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Modal: razón para desactivar / reactivar (perros encontrados) ══ -->
+  <div class="confirm-modal-overlay hidden" id="found-reason-overlay">
+    <div class="reason-modal-box">
+      <p class="reason-modal-title" id="found-reason-title">¿Por qué desactivas esta publicación?</p>
+      <p class="reason-modal-desc"  id="found-reason-desc"></p>
+      <div id="found-reason-list" class="reason-list"></div>
+      <div class="confirm-modal-actions" style="margin-top:20px">
+        <button class="btn-confirm-no"  id="found-reason-cancel"  type="button">Cancelar</button>
+        <button class="btn-confirm-yes btn-confirm-deactivate" id="found-reason-confirm" type="button" disabled>
+          Sí, desactivar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Modal: razón para desactivar / reactivar (perros extraviados) ══ -->
+  <div class="confirm-modal-overlay hidden" id="lost-reason-overlay">
+    <div class="reason-modal-box">
+      <p class="reason-modal-title" id="lost-reason-title">¿Por qué desactivas esta publicación?</p>
+      <p class="reason-modal-desc"  id="lost-reason-desc"></p>
+      <div id="lost-reason-list" class="reason-list"></div>
+      <div class="confirm-modal-actions" style="margin-top:20px">
+        <button class="btn-confirm-no"  id="lost-reason-cancel"  type="button">Cancelar</button>
+        <button class="btn-confirm-yes btn-confirm-deactivate" id="lost-reason-confirm" type="button" disabled>
+          Sí, desactivar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Modal: razón para desactivar / reactivar ══ -->
+  <div class="confirm-modal-overlay hidden" id="my-reason-overlay">
+    <div class="reason-modal-box">
+      <p class="reason-modal-title" id="my-reason-title">¿Por qué desactivas este reporte?</p>
+      <p class="reason-modal-desc"  id="my-reason-desc"></p>
+      <div id="my-reason-list" class="reason-list"></div>
+      <div class="confirm-modal-actions" style="margin-top:20px">
+        <button class="btn-confirm-no"  id="my-reason-cancel"  type="button">Cancelar</button>
+        <button class="btn-confirm-yes btn-confirm-deactivate" id="my-reason-confirm" type="button" disabled>
+          Sí, desactivar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast hidden" id="toast"></div>
+
+  <!-- Sidebar backdrop (mobile) -->
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+  <script>
+    (function() {
+      var toggle   = document.getElementById('btn-sidebar-toggle')
+      var sidebar  = document.querySelector('.sidebar')
+      var backdrop = document.getElementById('sidebar-backdrop')
+
+      function openSidebar()  { sidebar.classList.add('open');    backdrop.classList.add('open') }
+      function closeSidebar() { sidebar.classList.remove('open'); backdrop.classList.remove('open') }
+
+      toggle.addEventListener('click', function() {
+        sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+      })
+      backdrop.addEventListener('click', closeSidebar)
+
+      document.querySelectorAll('.nav-item').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          if (window.innerWidth <= 768) closeSidebar()
+        })
+      })
+    })()
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script type="module" src="js/dashboard.js"></script>
+</body>
+</html>

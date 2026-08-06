@@ -1,0 +1,25 @@
+{
+  "hosting": {
+    "target": "refugiowoof",
+    "public": "WOOF_ADMIN",
+    "ignore": [
+      "firebase.json",
+      ".gitkeep",
+      "**/node_modules/**"
+    ],
+    "headers": [
+      {
+        "source": "index.html",
+        "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, private" }]
+      },
+      {
+        "source": "dashboard.html",
+        "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, private" }]
+      },
+      {
+        "source": ".well-known/assetlinks.json",
+        "headers": [{ "key": "Content-Type", "value": "application/json" }]
+      }
+    ]
+  }
+}

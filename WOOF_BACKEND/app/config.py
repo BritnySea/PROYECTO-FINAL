@@ -4,10 +4,13 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     firebase_credentials_path: str = "firebase_credentials.json"
+    firebase_credentials_json: str = ""   # JSON completo como string (Railway)
     model_path: str = "ml/woof_model_v1.h5"
+    model_download_url: str = ""          # URL pública del modelo en Firebase Storage
     cloudinary_cloud_name: str = ""
     cloudinary_api_key: str = ""
     cloudinary_api_secret: str = ""
+    allowed_origins: str = ""             # URLs separadas por coma (Railway/Firebase Hosting)
 
     class Config:
         env_file = ".env"

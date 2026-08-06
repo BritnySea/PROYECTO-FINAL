@@ -1,6 +1,7 @@
 package com.univalle.proyectov1.ui.auth
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -53,9 +54,17 @@ suspend fun launchGoogleSignIn(
     } catch (e: androidx.credentials.exceptions.GetCredentialCancellationException) {
         // El usuario canceló el selector de cuenta, no mostramos error
     } catch (e: androidx.credentials.exceptions.NoCredentialException) {
-        onError("No hay cuentas de Google disponibles en este dispositivo")
+        Log.e("GoogleSignIn", "NoCredentialException: ${e.message}", e)
+        onError("No hay cuentas de Google configuradas en este dispositivo")
+    } catch (e: androidx.credentials.exceptions.GetCredentialUnknownException) {
+        Log.e("GoogleSignIn", "UnknownException: ${e.message}", e)
+        onError("Error desconocido (${e.message?.take(60)})")
+    } catch (e: androidx.credentials.exceptions.GetCredentialException) {
+        Log.e("GoogleSignIn", "CredentialException [${e.javaClass.simpleName}]: ${e.message}", e)
+        onError("Error de credencial: ${e.message?.take(80)}")
     } catch (e: Exception) {
-        onError("No se pudo iniciar sesión con Google. Intenta nuevamente.")
+        Log.e("GoogleSignIn", "Exception [${e.javaClass.simpleName}]: ${e.message}", e)
+        onError("Error [${e.javaClass.simpleName}]: ${e.message?.take(80)}")
     }
 }
 

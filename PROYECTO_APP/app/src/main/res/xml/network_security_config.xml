@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Configuración de seguridad de red para Refugio WOOF.
+    Solo permite tráfico HTTP sin cifrado hacia el emulador (10.0.2.2)
+    y la IP local de desarrollo. Todo el tráfico externo debe usar HTTPS.
+    Referencia: https://developer.android.com/training/articles/security-config
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Emulador Android -->
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <!-- IP local de desarrollo (cambiar según la red) -->
+        <domain includeSubdomains="false">10.240.120.216</domain>
+    </domain-config>
+
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

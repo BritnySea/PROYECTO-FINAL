@@ -28,6 +28,9 @@ class AuthViewModel @Inject constructor(
     val signInState: State<UiState<Unit>> = _signInState
 
     private val _resetPasswordState = mutableStateOf<UiState<Unit>>(UiState.Idle)
+
+    private val _confirmResetState = mutableStateOf<UiState<Unit>>(UiState.Idle)
+    val confirmResetState: State<UiState<Unit>> = _confirmResetState
     val resetPasswordState: State<UiState<Unit>> = _resetPasswordState
 
     // ==================== REGISTRO ====================
@@ -170,7 +173,7 @@ class AuthViewModel @Inject constructor(
                     } else {
                         _signInState.value = UiState.Error(
                             "📧 Debes verificar tu correo antes de iniciar sesión.\n" +
-                                    "Revisa tu bandeja de entrada."
+                                    "Revisa tu bandeja de entrada o carpeta de spam."
                         )
                         repository.signOut()
                     }
@@ -199,15 +202,17 @@ class AuthViewModel @Inject constructor(
                 result.onSuccess {
                     _signInState.value = UiState.Success(Unit)
                 }.onFailure { error ->
+                    val rawMsg = error.message ?: ""
                     val mensaje = when {
-                        error.message == "CUENTA_BLOQUEADA" ->
+                        rawMsg == "CUENTA_BLOQUEADA" ->
                             "🚫 Tu cuenta ha sido bloqueada por uso indebido."
-                        error.message?.contains("network", ignoreCase = true) == true ||
-                        error.message?.contains("Network", ignoreCase = true) == true ->
+                        rawMsg.contains("network", ignoreCase = true) ->
                             "Sin conexión a internet. Verifica tu red e intenta nuevamente."
-                        error.message?.contains("timeout", ignoreCase = true) == true ->
+                        rawMsg.contains("timeout", ignoreCase = true) ->
                             "La conexión tardó demasiado. Intenta nuevamente."
-                        else -> "No se pudo iniciar sesión con Google. Intenta nuevamente."
+                        rawMsg.contains("INVALID_CREDENTIAL") || rawMsg.contains("invalid_grant") ->
+                            "Credencial de Google inválida. Revisa la configuración de Firebase."
+                        else -> "Google Sign-In: $rawMsg"
                     }
                     _signInState.value = UiState.Error(mensaje)
                 }
@@ -262,10 +267,36 @@ class AuthViewModel @Inject constructor(
         _signUpState.value = UiState.Error(message)
     }
 
+    // ==================== CONFIRMAR NUEVA CONTRASEÑA ====================
+    fun confirmPasswordReset(oobCode: String, newPassword: String, confirmPassword: String) {
+        viewModelScope.launch {
+            if (newPassword.length < 8) {
+                _confirmResetState.value = UiState.Error("⚠️ La contraseña debe tener mínimo 8 caracteres")
+                return@launch
+            }
+            if (newPassword != confirmPassword) {
+                _confirmResetState.value = UiState.Error("⚠️ Las contraseñas no coinciden")
+                return@launch
+            }
+            _confirmResetState.value = UiState.Loading
+            try {
+                val result = repository.confirmPasswordReset(oobCode, newPassword)
+                result.onSuccess {
+                    _confirmResetState.value = UiState.Success(Unit)
+                }.onFailure {
+                    _confirmResetState.value = UiState.Error("❌ El enlace expiró o ya fue usado. Solicita uno nuevo.")
+                }
+            } catch (e: Exception) {
+                _confirmResetState.value = UiState.Error("❌ Error inesperado. Intenta nuevamente.")
+            }
+        }
+    }
+
     // ==================== RESETEAR ESTADOS ====================
     fun resetStates() {
         _signInState.value = UiState.Idle
         _signUpState.value = UiState.Idle
         _resetPasswordState.value = UiState.Idle
+        _confirmResetState.value = UiState.Idle
     }
 }

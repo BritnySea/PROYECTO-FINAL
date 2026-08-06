@@ -7,8 +7,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.content.ContextCompat
-import com.google.firebase.messaging.FirebaseMessaging
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -39,11 +40,13 @@ import com.univalle.proyectov1.ui.navigation.Routes
 import com.univalle.proyectov1.ui.profile.ProfileScreen
 import com.univalle.proyectov1.ui.profile.ProfileViewModel
 import com.univalle.proyectov1.ui.session.SessionViewModel
+import com.univalle.proyectov1.ui.auth.ResetPasswordScreen
 import com.univalle.proyectov1.ui.splash.SplashScreen
 import com.univalle.proyectov1.ui.theme.Gold
 import com.univalle.proyectov1.ui.theme.Proyectov1Theme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 
@@ -65,13 +68,18 @@ class MainActivity : ComponentActivity() {
         FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
             FirebaseFirestore.getInstance()
                 .collection("users").document(uid)
-                .update("fcmToken", token)
+                .set(mapOf("fcmToken" to token), SetOptions.merge())
         }
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestNotificationPermission()
         saveFcmToken()
+
+        // Extraer datos del deep link (verificación de correo o recuperación de contraseña)
+        val deepLinkMode    = intent?.data?.getQueryParameter("mode")
+        val deepLinkOobCode = intent?.data?.getQueryParameter("oobCode")
+
         setContent {
             Proyectov1Theme {
                 val navController = rememberNavController()
@@ -82,6 +90,30 @@ class MainActivity : ComponentActivity() {
                 val startRoute =
                     if (currentUser != null && currentUser.isEmailVerified) Routes.HOME
                     else Routes.LOGIN
+
+                var showEmailVerifiedSuccess by remember { mutableStateOf(false) }
+
+                // Manejar deep links: verificación de correo y recuperación de contraseña
+                LaunchedEffect(Unit) {
+                    when {
+                        deepLinkMode == "verifyEmail" && !deepLinkOobCode.isNullOrBlank() -> {
+                            try {
+                                FirebaseAuth.getInstance().applyActionCode(deepLinkOobCode).await()
+                                showEmailVerifiedSuccess = true
+                            } catch (_: Exception) {
+                                // Link expirado o ya usado — el usuario verá el error al intentar login
+                            }
+                            navController.navigate(Routes.LOGIN) {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        }
+                        deepLinkMode == "resetPassword" && !deepLinkOobCode.isNullOrBlank() -> {
+                            navController.navigate("reset_password/$deepLinkOobCode") {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        }
+                    }
+                }
 
                 // Pantallas que muestran BottomNav
                 val bottomNavRoutes = setOf(
@@ -195,7 +227,9 @@ class MainActivity : ComponentActivity() {
                                         navController.navigate(Routes.REGISTER)
                                     },
                                     showBlockedMessage = showBlockedMessage,
-                                    onBlockedMessageShown = { showBlockedMessage = false }
+                                    onBlockedMessageShown = { showBlockedMessage = false },
+                                    showEmailVerifiedSuccess = showEmailVerifiedSuccess,
+                                    onEmailVerifiedMessageShown = { showEmailVerifiedSuccess = false }
                                 )
                             }
 
@@ -266,6 +300,19 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
+                            // ── Reset Password (deep link) ────────────────────
+                            composable(Routes.RESET_PASSWORD) { backStack ->
+                                val oobCode = backStack.arguments?.getString("oobCode") ?: ""
+                                ResetPasswordScreen(
+                                    oobCode = oobCode,
+                                    onSuccess = {
+                                        navController.navigate(Routes.LOGIN) {
+                                            popUpTo(0) { inclusive = true }
+                                        }
+                                    }
+                                )
+                            }
+
                             // ── Report flows ──────────────────────────────────
                             composable(Routes.REPORT_LOST) {
                                 ReportLostDogScreen(
@@ -284,8 +331,8 @@ class MainActivity : ComponentActivity() {
                                     viewModel = dogsViewModel,
                                     onBack = { navController.popBackStack() },
                                     onNavigateToMatches = {
-                                        navController.navigate(Routes.MATCH_RESULTS) {
-                                            popUpTo(Routes.HOME)
+                                        navController.navigate(Routes.HOME) {
+                                            popUpTo(Routes.HOME) { inclusive = true }
                                         }
                                     }
                                 )

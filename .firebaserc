@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "default": "proyectov1-15"
+  },
+  "targets": {
+    "proyectov1-15": {
+      "hosting": {
+        "refugiowoof": ["refugiowoof"]
+      }
+    }
+  }
+}

@@ -33,7 +33,9 @@ fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit,
     showBlockedMessage: Boolean = false,
-    onBlockedMessageShown: () -> Unit = {}
+    onBlockedMessageShown: () -> Unit = {},
+    showEmailVerifiedSuccess: Boolean = false,
+    onEmailVerifiedMessageShown: () -> Unit = {}
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -355,7 +357,7 @@ fun LoginScreen(
             ) {
                 NotificationBubbleInternal(
                     text = when (resetState) {
-                        is UiState.Success -> "📧 Se envió un correo para restablecer tu contraseña. Revisa tu bandeja de entrada."
+                        is UiState.Success -> "📧 Se envió un correo para restablecer tu contraseña. Si no lo ves, revisa tu carpeta de spam."
                         is UiState.Error -> resetState.message
                         else -> ""
                     },
@@ -379,6 +381,25 @@ fun LoginScreen(
                 NotificationBubbleInternal(
                     text = "🚫 Tu cuenta ha sido bloqueada por uso indebido.",
                     isError = true
+                )
+            }
+        }
+
+        // BURBUJA CORREO VERIFICADO (cuando viene del deep link)
+        if (showEmailVerifiedSuccess) {
+            LaunchedEffect(Unit) {
+                delay(5000)
+                onEmailVerifiedMessageShown()
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = 24.dp, end = 24.dp, bottom = 110.dp),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                NotificationBubbleInternal(
+                    text = "✅ ¡Correo verificado! Ya puedes iniciar sesión.",
+                    isError = false
                 )
             }
         }

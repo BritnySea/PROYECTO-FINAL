@@ -143,7 +143,7 @@ fun RegisterScreen(
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     Text("Crear cuenta", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Divider(modifier = Modifier.padding(vertical = 12.dp), color = Color.White.copy(alpha = 0.1f))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color.White.copy(alpha = 0.1f))
 
                     // Campos personalizados
                     RegisterFieldInternal(label = "Nombre completo", value = name, onValueChange = { name = it }, icon = Icons.Default.Person, placeholder = "Tu nombre", goldColor = Gold)
@@ -187,6 +187,14 @@ fun RegisterScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
                     RegisterFieldInternal(label = "Confirmar contraseña", value = confirmPassword, onValueChange = { confirmPassword = it }, icon = Icons.Default.Refresh, placeholder = "********", isPassword = true, goldColor = Gold, errorText = confirmPasswordError, onFocusLost = { confirmPasswordTouched = true }, showPasswordToggle = true)
+
+                    // Requisitos de contraseña
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        PasswordRequirementItem("Mínimo 8 caracteres", password.length >= 8)
+                        PasswordRequirementItem("Mayúsculas y minúsculas", password.any { it.isUpperCase() } && password.any { it.isLowerCase() })
+                        PasswordRequirementItem("Al menos un número", password.any { it.isDigit() })
+                        PasswordRequirementItem("Al menos un símbolo (!@#...)", password.any { !it.isLetterOrDigit() } && password.isNotEmpty())
+                    }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
@@ -276,8 +284,26 @@ fun RegisterScreen(
             when {
                 errorFromGoogle != null -> NotificationBubbleInternal(text = errorFromGoogle.message, isError = true)
                 signUpState is UiState.Error -> NotificationBubbleInternal(text = (signUpState as UiState.Error).message, isError = true)
-                showSuccessBubble -> NotificationBubbleInternal(text = "¡Correo enviado! Verifica tu cuenta para entrar.", isError = false)
+                showSuccessBubble -> NotificationBubbleInternal(text = "¡Correo de verificación enviado! Si no lo ves, revisa tu carpeta de spam.", isError = false)
             }
         }
+    }
+}
+
+@Composable
+private fun PasswordRequirementItem(text: String, met: Boolean) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = if (met) "✓" else "○",
+            fontSize = 12.sp,
+            color = if (met) Color(0xFF22C55E) else Color.White.copy(alpha = 0.3f),
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = text,
+            fontSize = 12.sp,
+            color = if (met) Color.White.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.3f)
+        )
     }
 }

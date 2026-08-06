@@ -2,6 +2,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 import firebase_admin.auth
 
+from app.services import firebase_service
+
 _bearer = HTTPBearer()
 
 
@@ -12,7 +14,6 @@ async def verify_firebase_token(
 
     try:
         decoded_token = firebase_admin.auth.verify_id_token(token)
-        return decoded_token
     except firebase_admin.auth.ExpiredIdTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -23,8 +24,17 @@ async def verify_firebase_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token inválido.",
         )
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Error al verificar token: {str(e)}",
+            detail="No se pudo verificar el token.",
         )
+
+    uid = decoded_token.get("uid")
+    if uid and firebase_service.is_user_blocked(uid):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tu cuenta ha sido suspendida. Contacta al administrador.",
+        )
+
+    return decoded_token
